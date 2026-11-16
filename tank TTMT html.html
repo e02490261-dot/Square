@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Shooter: LASER BLINK + NHẠC NỀN</title>
+    <style>
+        /* CSS giữ nguyên từ bản trước */
+        body {
+            margin: 0;
+            background: #050505;
+            color: #fff;
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            overflow: hidden;
+            user-select: none;
+        }
+        canvas {
+            background: #111;
+            border: 2px solid #333;
+            display: block;
+            margin: 0 auto;
+            box-shadow: 0 0 40px #000;
+            cursor: crosshair;
+        }
+        .overlay { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            background: rgba(15,15,15,0.98); 
+            padding: 40px; 
+            border-radius: 12px; 
+            border: 1px solid #ffd700; 
+            z-index: 1000; 
+            min-width: 320px; 
+            box-shadow: 0 0 50px #000;
+        }
+        .btn { 
+            display: block; 
+            width: 100%; 
+            padding: 15px; 
+            margin: 10px 0; 
+            font-size: 16px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: 700; 
+            transition: 0.2s; 
+            color: #fff; 
+            text-transform: uppercase; 
+            letter-spacing: 1px;
+        }
+        .easy { background: #27ae60; } 
+        .normal { background: #2980b9; } 
+        .hard { background: #d35400; } 
+        .insane { background: #c0392b; }
+        .replay-btn { background: #f1c40f; color: #000; } 
+        .menu-btn { background: #444; }
+        .btn:hover { transform: scale(1.02); filter: brightness(1.2); }
+        .stats { 
+            position: absolute; 
+            top: 20px; 
+            left: 20px; 
+            text-align: left; 
+            background: rgba(0,0,0,0.9); 
+            padding: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #444; 
+            min-width: 280px;
+            z-index: 100;
+        }
+        .hp-bar { width: 100%; height: 10px; background: #333; border-radius: 4px; margin: 5px 0 8px; overflow: hidden; }
+        .hp-fill { height: 100%; transition: width 0.2s; }
+        .hp-text { font-size: 13px; margin-bottom: 3px; display: flex; justify-content: space-between; }
+        .hp-numbers { font-weight: bold; font-family: monospace; font-size: 14px; }
+        .hp-percent { font-size: 11px; color: #aaa; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; }
+        #timer { color: #ffd700; font-family: monospace; font-size: 24px; font-weight: bold; margin-top: 15px; text-align: center; background: rgba(255,215,0,0.1); padding: 8px; border-radius: 5px; }
+        #wp-display { font-size: 14px; color: #0ff; margin-top: 12px; font-weight: bold; text-align: center; background: rgba(0,255,255,0.1); padding: 6px; border-radius: 5px; }
+        .controls { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 8px; border: 1px solid #444; min-width: 240px; font-size: 12px; color: #aaa; z-index: 100; }
+        .pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; }
+        .key { display: inline-block; background: #333; padding: 2px 8px; border-radius: 4px; margin: 0 2px; font-family: monospace; }
+        .boss-name { color: #ff6b6b; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        /* Nút điều khiển nhạc */
+        #music-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            z-index: 1001;
+            font-size: 14px;
+            cursor: pointer;
+            border: 1px solid #ffd700;
+        }
+        #music-control:hover {
+            background: rgba(255,215,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+<div id="menu" class="overlay">
+    <h1 style="color:#ffd700; margin:0 0 25px; letter-spacing:2px;">CHIẾN TRƯỜNG</h1>
+    <button class="btn easy" onclick="startGame('easy')">DỄ <span id="best-easy" class="best-txt"></span></button>
+    <button class="btn normal" onclick="startGame('normal')">THƯỜNG <span id="best-normal" class="best-txt"></span></button>
+    <button class="btn hard" onclick="startGame('hard')">KHÓ <span id="best-hard" class="best-txt"></span></button>
+    <button class="btn insane" onclick="startGame('insane')">ÁC MỘNG <span id="best-insane" class="best-txt"></span></button>
+    <div style="margin-top:20px; color:#aaa; font-size:14px;">
+        <p>WASD: Di chuyển | Chuột trái: Bắn / Đặt mìn / Bắn neo | Chuột phải: Dịch chuyển (LASER BLINK) / Kích nổ mìn</p>
+        <p><span class="key">0-8</span> : Đổi vũ khí | <span class="key">P</span> : Tạm dừng | <span class="key">R</span> : Chơi lại | <span class="key">ESC</span> : Menu</p>
+        <p><span style="color:#ff66ff">LASER BLINK (7)</span> : Chuột trái – bắn laser (dừng khi chạm tường) | Chuột phải – dịch chuyển đến laser</p>
+    </div>
+</div>
+
+<div id="game-over-ui" class="overlay" style="display:none">
+    <h1 id="result-text" style="font-size:36px; margin:0;"></h1>
+    <p id="result-detail" style="color:#ccc; margin:20px 0; line-height:1.6; font-size: 18px;"></p>
+    <button class="btn replay-btn" onclick="retryGame()">CHƠI LẠI NGAY</button>
+    <button class="btn menu-btn" onclick="backToMenu()">VỀ MENU CHÍNH</button>
+</div>
+
+<div id="pause-ui" class="pause-overlay" style="display:none">
+    <div style="background: rgba(15,15,15,0.95); padding:40px; border-radius:12px; border:1px solid #ffd700;">
+        <h1 style="color:#ffd700; margin-bottom:25px;">TẠM DỪNG</h1>
+        <button class="btn replay-btn" onclick="resumeGame()">TIẾP TỤC</button>
+        <button class="btn menu-btn" onclick="backToMenu()">VỀ MENU</button>
+    </div>
+</div>
+
+<div class="stats" id="ui" style="display:none">
+    <div style="margin-bottom:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <b style="color:#2ecc71">NGƯỜI CHƠI</b>
+            <div id="p1-hp-percent" class="hp-percent">100%</div>
+        </div>
+        <div class="hp-text">
+            <span id="p1-hp-numbers" class="hp-numbers">20/20</span>
+        </div>
+        <div class="hp-bar"><div id="p1-fill" class="hp-fill" style="background:#2ecc71; width:100%"></div></div>
+    </div>
+    <div style="margin-bottom:15px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+            <div class="boss-name" id="boss-name">BOSS</div>
+            <div id="boss-hp-percent" class="hp-percent">100%</div>
+        </div>
+        <div class="hp-text">
+            <span id="boss-hp-numbers" class="hp-numbers">160/160</span>
+            <span id="boss-phase" style="font-size:10px; color:#ffa500;"></span>
+        </div>
+        <div class="hp-bar"><div id="boss-fill" class="hp-fill" style="background:#e74c3c; width:100%"></div></div>
+    </div>
+    <div id="timer">0.00s</div>
+    <div id="wp-display">VŨ KHÍ: PISTOL</div>
+    <div id="mine-count" style="font-size:12px; color:#ffaa00; margin-top:8px;">MÌN: 0</div>
+    <div id="anchor-count" style="font-size:12px; color:#aa66cc; margin-top:4px;">NEO: 0/2</div>
+    <div id="laserblink-status" style="font-size:12px; color:#ff66ff; margin-top:4px;">LASER: KHÔNG</div>
+</div>
+
+<div class="controls" style="display:none;">
+    <b style="color:#ffd700">ĐIỀU KHIỂN</b><br>
+    <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> : Di chuyển<br>
+    <span style="color:#ff66ff">LASER BLINK (7)</span> : Chuột trái – bắn laser | Chuột phải – dịch chuyển đến laser<br>
+    <span style="color:#aa66cc">ANCHOR (8)</span> : Chuột trái – bắn neo | Chuột phải – kích nổ mìn<br>
+    <span style="color:#ffaa00">MINE (3)</span> : Chuột trái đặt, chuột phải kích nổ<br>
+    <span class="key">0-8</span> : Đổi vũ khí
+</div>
+
+<canvas id="game" width="1000" height="600"></canvas>
+
+<!-- Nhạc nền "Truy Đuổi Trong Làn Băng" -->
+<audio id="bg-music" loop preload="auto">
+    <source src="truy_duoi_trong_lan_bang.mp3" type="audio/mpeg">
+    Trình duyệt của bạn không hỗ trợ audio.
+</audio>
+
+<!-- Nút điều khiển nhạc -->
+<div id="music-control">🔇 Đang tắt</div>
+
+<script>
+// ============================================================
+// PRO SHOOTER: LASER BLINK + NHẠC NỀN
+// ============================================================
+
+// --- Xử lý nhạc nền ---
+const bgMusic = document.getElementById('bg-music');
+const musicControl = document.getElementById('music-control');
+let musicEnabled = false;
+
+function toggleMusic() {
+    if (musicEnabled) {
+        bgMusic.pause();
+        musicControl.innerHTML = '🔇 Đang tắt';
+    } else {
+        bgMusic.play().catch(e => {
+            console.log('Không thể phát nhạc tự động, cần tương tác trước');
+            musicControl.innerHTML = '🔊 Bấm để phát';
+        });
+        musicControl.innerHTML = '🔊 Đang phát';
+    }
+    musicEnabled = !musicEnabled;
+}
+
+musicControl.addEventListener('click', toggleMusic);
+
+// Thử phát tự động khi tải trang
+window.addEventListener('load', () => {
+    bgMusic.play().then(() => {
+        musicEnabled = true;
+        musicControl.innerHTML = '🔊 Đang phát';
+    }).catch(() => {
+        musicEnabled = false;
+        musicControl.innerHTML = '🔇 Bấm để phát';
+    });
+});
+
+// Tạm dừng nhạc khi game pause
+function pauseGame() {
+    isPaused = true;
+    pauseStart = Date.now();
+    document.getElementById('pause-ui').style.display = 'flex';
+    bgMusic.pause();
+}
+
+// Tiếp tục nhạc khi resume
+function resumeGame() {
+    document.getElementById('pause-ui').style.display = 'none';
+    if (pauseStart) { startTime += Date.now() - pauseStart; pauseStart = 0; }
+    isPaused = false;
+    lastTime = 0;
+    if (musicEnabled) {
+        bgMusic.play().catch(e => console.log('Không thể phát lại nhạc'));
+    }
+}
+
+// Dừng nhạc khi về menu
+function backToMenu() {
+    isPaused = true;
+    document.getElementById('game-over-ui').style.display = 'none';
+    document.getElementById('pause-ui').style.display = 'none';
+    document.getElementById('menu').style.display = 'block';
+    document.getElementById('ui').style.display = 'none';
+    document.querySelector('.controls').style.display = 'none';
+    updateBestDisplay();
+    bgMusic.pause();
+    musicEnabled = false;
+    musicControl.innerHTML = '🔇 Đang tắt';
+}
+
+// Khi chơi lại, reset nhạc về đầu và phát
+function retryGame() { 
+    bgMusic.currentTime = 0;
+    if (musicEnabled) {
+        bgMusic.play().catch(e => console.log('Không thể phát lại nhạc'));
+    }
+    startGame(currentMode); 
+}
+
+// --- Phần còn lại của game (giữ nguyên từ bản trước) ---
+const c = document.getElementById('game');
+const ctx = c.getContext('2d');
+const fogC = document.createElement('canvas');
+const fctx = fogC.getContext('2d');
+fogC.width = c.width; fogC.height = c.height;
+
+const weapons = {
+    pistol:  {cd:15, speed:13, dmg:2, color:'yellow', spread:0.02, name:'PISTOL'},
+    rocket:  {cd:90, speed:8, dmg:15, color:'red', homing:true, size:9, name:'ROCKET'},
+    plasma:  {cd:25, speed:9, dmg:3, color:'#f0f', grows:true, growSize:0.2, growDmg:0.2, name:'PLASMA'},
+    mine:    {cd:30, speed:0, dmg:0, color:'#888', size:12, name:'MINE'},
+    overlord: {
+        cd: 7, speed: 16, dmg: 1.8, color: '#ffaa00',
+        spread: 0.02, maxSpread: 0.20, minSpread: 0.05,
+        isOverlord: true,
+        spinUpSpeed: 0.3, minCd: 2,
+        damageDecay: 0.02, minDmg: 1.2,
+        speedIncrease: 0.1, maxSpeed: 18,
+        name: 'OVERLORD X'
+    },
+    sniper:  {cd:140, speed:25, dmg:45, color:'#fff', zoom:true, name:'SNIPER'},
+    scatterburst: {
+        cd: 50, speed: 14, dmg: 1.0, color: '#ffaa88',
+        spread: 0.4, burstCount: 3, pelletsPerShot: 3,
+        isScatterBurst: true, name: 'SCATTER BURST'
+    },
+    // ██████ LASER BLINK – GỘP LASER VÀ BLINK (ĐÃ SỬA) ██████
+    laserblink: {
+        cd: 1,
+        speed: 50,
+        dmg: 5,
+        color: '#ff66ff',
+        bulletSize: 6,
+        lifetime: 60,
+        swapRange: 600,
+        name: 'LASER BLINK'
+    },
+    // ANCHOR GUN
+    anchor: {
+        cd: 30,
+        speed: 50,
+        dmg: 0,
+        color: '#aa66cc',
+        duration: 240,
+        radius: 150,
+        pullStrength: 0.8,
+        slowFactor: 0.5,
+        maxAnchors: 2,
+        name: 'ANCHOR GUN'
+    }
+};
+
+const weaponMap = [
+    'pistol',       // 0
+    'rocket',       // 1
+    'plasma',       // 2
+    'mine',         // 3
+    'overlord',     // 4
+    'sniper',       // 5
+    'scatterburst', // 6
+    'laserblink',   // 7
+    'anchor'        // 8
+];
+
+let p1, boss, walls, cam, keys={}, isMouseDown=false, isRightMouseDown=false, mouse={x:0,y:0};
+let currentMode='normal', isPaused=true, startTime=0, pauseStart=0;
+let fireDuration = 0;
+let bossHitEffect = 0;
+let lastTime = 0;
+let damagePopups = [];
+let explosionEffects = [];
+let mines = [];
+let anchors = [];
+
+// Biến lưu đạn laser hiện tại (chỉ 1 viên)
+let laserBullet = null;
+
+let bossPhase = 0;
+const bossNames = ['BẠO CHÚA','TỬ THẦN','HỦY DIỆT','ÁC MỘNG'];
+
+// Định nghĩa các phase cho từng độ khó
+const phaseDefinitions = {
+    easy: [
+        { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 1 },
+        { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 }
+    ],
+    normal: [
+        { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 3 },
+        { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] }
+    ],
+    hard: [
+        { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 6 },
+        { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] },
+        { threshold: 0.2, name: 'PHASE 4', heal: 0.9, transformIll: true, minionHP: 10 }
+    ],
+    insane: [
+        { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 12 },
+        { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] },
+        { threshold: 0.2, name: 'PHASE 4', heal: 0.9, transformIll: true, minionHP: 10 },
+        { threshold: 0.15, name: 'PHASE 5', heal: 0.85, transformIll: true, minionHP: 10, skills: ['copyBullet', 'controlBullet'] }
+    ]
+};
+
+// Cấu hình cơ bản cho mỗi độ khó
+const cfg = {
+    easy:   {hp:80, moveSpeed:1, ill:1, vis:550, bossName:bossNames[0]},
+    normal: {hp:160, moveSpeed:1.8, ill:3, vis:450, bossName:bossNames[1]},
+    hard:   {hp:450, moveSpeed:2.5, ill:6, vis:350, bossName:bossNames[2]},
+    insane: {hp:1200, moveSpeed:3.5, ill:12, vis:260, bossName:bossNames[3]}
+};
+
+function getPhaseFromHP(hpPercent, mode) {
+    const phases = phaseDefinitions[mode];
+    for (let i = phases.length - 1; i >= 0; i--) {
+        if (hpPercent <= phases[i].threshold) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+function applyPhaseEffects(phaseIndex) {
+    const phases = phaseDefinitions[currentMode];
+    const phase = phases[phaseIndex];
+    if (!phase) return;
+
+    document.getElementById('boss-phase').innerText = phase.name;
+
+    if (phase.heal) {
+        if (phase.heal === 2) {
+            boss.hp = boss.maxHp * 2;
+            boss.maxHp = boss.maxHp * 2;
+        } else if (phase.heal === 1.0) {
+            boss.hp = boss.maxHp;
+        } else if (phase.heal === 0.9) {
+            boss.hp = boss.maxHp * 0.9;
+        } else if (phase.heal === 0.85) {
+            boss.hp = boss.maxHp * 0.85;
+        }
+    }
+
+    if (phase.dmg) boss.damage = phase.dmg;
+    if (phase.speedMult) boss.speedMult = phase.speedMult;
+    if (phase.illMult) boss.illMult = phase.illMult;
+    if (phase.illDuration) boss.illDuration = phase.illDuration;
+
+    if (phase.skills) {
+        phase.skills.forEach(skill => {
+            boss.skills[skill] = true;
+            if (skill === 'blink') boss.blinkCd = 0;
+            if (skill === 'swap') boss.swapCd = 0;
+            if (skill === 'copyBullet') boss.copyCd = 0;
+            if (skill === 'controlBullet') boss.controlCd = 0;
+        });
+    }
+
+    if (phase.transformIll) {
+        boss.ill.forEach(ill => {
+            let minion = {
+                x: ill.x, y: ill.y, w: ill.w, h: ill.h,
+                hp: phase.minionHP,
+                color: '#ff00ff'
+            };
+            pushOutOfWalls(minion);
+            boss.minions.push(minion);
+        });
+        boss.ill = [];
+    }
+}
+
+function updateBestDisplay() {
+    ['easy','normal','hard','insane'].forEach(m => {
+        const best = localStorage.getItem('best_'+m);
+        document.getElementById('best-'+m).innerText = best ? `(Kỷ lục: ${best}s)` : '';
+    });
+}
+
+function createDamagePopup(x, y, dmg, col='#ff4444') {
+    damagePopups.push({
+        x: x + (Math.random()-0.5)*30,
+        y: y,
+        text: Math.floor(dmg).toString(),
+        color: col,
+        life: 60,
+        vy: -1
+    });
+}
+
+function createExplosionEffect(x, y) {
+    explosionEffects.push({ x, y, radius: 24, life: 16 });
+}
+
+function explodeMine(mine) {
+    const angleStep = (Math.PI * 2) / 12;
+    for (let i = 0; i < 12; i++) {
+        const angle = i * angleStep;
+        p1.bullets.push({
+            x: mine.x,
+            y: mine.y,
+            vx: Math.cos(angle) * 10,
+            vy: Math.sin(angle) * 10,
+            dmg: 8,
+            color: '#ffaa00',
+            size: 5,
+            lifetime: 60,
+            homing: false,
+            pierce: false
+        });
+    }
+    createExplosionEffect(mine.x, mine.y);
+}
+
+function createAnchor(x, y, duration, radius, pullStrength, slowFactor) {
+    if (anchors.length >= weapons.anchor.maxAnchors) {
+        anchors.shift();
+    }
+    anchors.push({
+        x, y,
+        life: duration,
+        radius,
+        pullStrength,
+        slowFactor,
+        color: '#aa66cc'
+    });
+}
+
+function pointInWall(x, y, wall) {
+    return x > wall.x && x < wall.x + wall.w && y > wall.y && y < wall.y + wall.h;
+}
+
+function checkHit(r1, r2) {
+    return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+}
+
+function pushOutOfWalls(entity) {
+    let maxIter = 10;
+    while (maxIter-- > 0) {
+        let collided = false;
+        for (let w of walls) {
+            if (checkHit(entity, w)) {
+                collided = true;
+                let overlapLeft = entity.x + entity.w - w.x;
+                let overlapRight = w.x + w.w - entity.x;
+                let overlapTop = entity.y + entity.h - w.y;
+                let overlapBottom = w.y + w.h - entity.y;
+                let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+                if (minOverlap === overlapLeft) {
+                    entity.x = w.x - entity.w;
+                } else if (minOverlap === overlapRight) {
+                    entity.x = w.x + w.w;
+                } else if (minOverlap === overlapTop) {
+                    entity.y = w.y - entity.h;
+                } else {
+                    entity.y = w.y + w.h;
+                }
+                break;
+            }
+        }
+        if (!collided) break;
+    }
+}
+
+function findSafePosition(entity, maxAttempts = 20) {
+    let attempts = 0;
+    let originalX = entity.x, originalY = entity.y;
+    while (attempts < maxAttempts) {
+        let collides = false;
+        for (let w of walls) {
+            if (checkHit(entity, w)) {
+                collides = true;
+                break;
+            }
+        }
+        if (!collides) return true;
+        entity.x = Math.random() * (1000 - entity.w - 60) + 30;
+        entity.y = Math.random() * (600 - entity.h - 60) + 30;
+        attempts++;
+    }
+    entity.x = originalX;
+    entity.y = originalY;
+    pushOutOfWalls(entity);
+    return false;
+}
+
+function updateUIDisplay() {
+    const p1HP = Math.max(0, Math.floor(p1.hp));
+    const p1Max = p1.maxHp;
+    const p1Percent = Math.floor((p1HP/p1Max)*100);
+    document.getElementById('p1-hp-numbers').innerText = `${p1HP}/${p1Max}`;
+    document.getElementById('p1-hp-percent').innerText = p1Percent + '%';
+    document.getElementById('p1-fill').style.width = p1Percent + '%';
+    if (p1Percent > 50) document.getElementById('p1-fill').style.background = '#2ecc71';
+    else if (p1Percent > 25) document.getElementById('p1-fill').style.background = '#f39c12';
+    else document.getElementById('p1-fill').style.background = '#e74c3c';
+
+    const bossHP = Math.max(0, Math.floor(boss.hp));
+    const bossMax = boss.maxHp;
+    const bossPercent = Math.floor((bossHP/bossMax)*100);
+    document.getElementById('boss-hp-numbers').innerText = `${bossHP}/${bossMax}`;
+    document.getElementById('boss-hp-percent').innerText = bossPercent + '%';
+    document.getElementById('boss-fill').style.width = bossPercent + '%';
+
+    let newPhase = getPhaseFromHP(bossHP / bossMax, currentMode);
+    if (newPhase > bossPhase) {
+        bossPhase = newPhase;
+        applyPhaseEffects(newPhase);
+    }
+
+    document.getElementById('boss-name').innerText = cfg[currentMode].bossName;
+
+    document.getElementById('mine-count').innerText = `MÌN: ${mines.length}`;
+    document.getElementById('anchor-count').innerText = `NEO: ${anchors.length}/${weapons.anchor.maxAnchors}`;
+    
+    if (laserBullet && laserBullet.lifetime > 0) {
+        document.getElementById('laserblink-status').innerText = `LASER: CÓ (${Math.floor(laserBullet.lifetime/60)}s)`;
+        document.getElementById('laserblink-status').style.color = '#ff66ff';
+    } else {
+        document.getElementById('laserblink-status').innerText = `LASER: KHÔNG`;
+        document.getElementById('laserblink-status').style.color = '#888';
+    }
+}
+
+function initGameVars(mode) {
+    const d = cfg[mode];
+    p1 = {
+        x:100, y:300, w:30, h:30, hp:20, maxHp:20,
+        weapon:'pistol', cd:0, bullets:[], vision:d.vis
+    };
+    boss = {
+        x:900, y:300, w:50, h:50, hp:d.hp, maxHp:d.hp,
+        bullets:[], cd:0, illCd:0, ill:[],
+        slowTimer: 0,
+        slowFactor: 1,
+        damage: 1,
+        speedMult: 1,
+        illMult: 1,
+        illDuration: 120,
+        skills: {},
+        blinkCd: 0,
+        swapCd: 0,
+        copyCd: 0,
+        controlCd: 0,
+        minions: [],
+        shootCd: 0
+    };
+    walls = [
+        {x:0, y:0, w:1000, h:30},
+        {x:0, y:570, w:1000, h:30},
+        {x:0, y:0, w:30, h:600},
+        {x:970, y:0, w:30, h:600},
+        {x:300, y:200, w:30, h:200},
+        {x:600, y:100, w:30, h:150},
+        {x:600, y:350, w:30, h:150}
+    ];
+    cam = {x:0,y:0};
+    fireDuration = 0;
+    bossHitEffect = 0;
+    damagePopups = [];
+    explosionEffects = [];
+    mines = [];
+    anchors = [];
+    laserBullet = null;
+    bossPhase = 0;
+}
+
+function startGame(mode) {
+    currentMode = mode;
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('game-over-ui').style.display = 'none';
+    document.getElementById('pause-ui').style.display = 'none';
+    document.getElementById('ui').style.display = 'block';
+    document.querySelector('.controls').style.display = 'block';
+    initGameVars(mode);
+    startTime = Date.now();
+    isPaused = false;
+    lastTime = 0;
+    updateUIDisplay();
+
+    // Phát nhạc nếu đang bật
+    if (musicEnabled) {
+        bgMusic.play().catch(e => console.log('Không thể phát nhạc'));
+    }
+}
+
+// Đã định nghĩa retryGame, backToMenu, resumeGame ở trên
+
+function endGame(win) {
+    isPaused = true;
+    const finalTime = ((Date.now() - startTime)/1000).toFixed(2);
+    document.getElementById('game-over-ui').style.display = 'block';
+    const txt = document.getElementById('result-text');
+    txt.innerText = win ? 'CHIẾN THẮNG!' : 'THẤT BẠI!';
+    txt.style.color = win ? '#2ecc71' : '#e74c3c';
+    if (win) {
+        const best = localStorage.getItem('best_'+currentMode);
+        if (!best || parseFloat(finalTime) < parseFloat(best))
+            localStorage.setItem('best_'+currentMode, finalTime);
+    }
+    document.getElementById('result-detail').innerHTML = 
+        `Độ khó: <b style="color:#ffd700">${currentMode.toUpperCase()}</b><br>` +
+        `Thời gian: <b>${finalTime}s</b><br>` +
+        `Máu boss: <b style="color:#e74c3c">${Math.max(0,Math.floor(boss.hp))}/${boss.maxHp}</b><br>` +
+        `Máu bạn: <b style="color:#2ecc71">${Math.max(0,Math.floor(p1.hp))}/20</b>`;
+
+    // Tạm dừng nhạc khi game over
+    bgMusic.pause();
+}
+
+addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'p') {
+        if (!isPaused && document.getElementById('menu').style.display==='none' && 
+            document.getElementById('game-over-ui').style.display==='none') {
+            pauseGame(); // dùng hàm pauseGame đã định nghĩa
+        } else if (isPaused && document.getElementById('pause-ui').style.display==='flex') {
+            resumeGame();
+        }
+        return;
+    }
+    if (key === 'r' && !isPaused) { retryGame(); return; }
+    if (key === 'escape') {
+        if (document.getElementById('pause-ui').style.display === 'flex') resumeGame();
+        else if (!isPaused) { pauseGame(); }
+        else backToMenu();
+        return;
+    }
+    if (e.key >= '0' && e.key <= '8') {
+        const idx = parseInt(e.key);
+        if (idx < weaponMap.length) {
+            const wp = weaponMap[idx];
+            if (wp) {
+                p1.weapon = wp;
+                document.getElementById('wp-display').innerText = `VŨ KHÍ: ${weapons[wp].name}`;
+                p1.vision = weapons[wp].zoom ? 250 : cfg[currentMode].vis;
+                fireDuration = 0;
+            }
+        }
+    }
+    keys[key] = true;
+});
+addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+c.addEventListener('mousemove', e => {
+    const rect = c.getBoundingClientRect();
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+});
+
+addEventListener('mousedown', e => {
+    if (isPaused) return;
+    
+    if (e.button === 2) {
+        isRightMouseDown = true;
+        e.preventDefault();
+        
+        // Ưu tiên: nếu đang dùng LASER BLINK và có laser, dịch chuyển
+        if (p1.weapon === 'laserblink' && laserBullet && laserBullet.lifetime > 0) {
+            const dist = Math.hypot(laserBullet.x - p1.x, laserBullet.y - p1.y);
+            if (dist <= weapons.laserblink.swapRange) {
+                // Dịch chuyển đến vị trí laser
+                p1.x = laserBullet.x - p1.w/2;
+                p1.y = laserBullet.y - p1.h/2;
+                p1.x = Math.max(30, Math.min(970 - p1.w, p1.x));
+                p1.y = Math.max(30, Math.min(570 - p1.h, p1.y));
+                // Đẩy player ra nếu bị kẹt tường
+                pushOutOfWalls(p1);
+                // Xóa laser
+                const index = p1.bullets.indexOf(laserBullet);
+                if (index !== -1) p1.bullets.splice(index, 1);
+                laserBullet = null;
+                createExplosionEffect(laserBullet?.x || p1.x, laserBullet?.y || p1.y);
+                createDamagePopup(laserBullet?.x || p1.x, laserBullet?.y || p1.y - 20, 'BLINK', '#ff66ff');
+                updateUIDisplay();
+            }
+        }
+        else if (mines.length > 0) {
+            mines.forEach(mine => explodeMine(mine));
+            mines = [];
+            updateUIDisplay();
+        }
+        return;
+    }
+    
+    if (e.button === 0) {
+        isMouseDown = true;
+        
+        if (p1.weapon === 'mine' && p1.cd <= 0) {
+            let worldX = p1.x + p1.w/2;
+            let worldY = p1.y + p1.h/2;
+            mines.push({
+                x: worldX,
+                y: worldY,
+                w: weapons.mine.size,
+                h: weapons.mine.size,
+                color: weapons.mine.color
+            });
+            p1.cd = weapons.mine.cd;
+            createDamagePopup(worldX, worldY - 20, 'ĐẶT MÌN', '#ffaa00');
+            updateUIDisplay();
+        }
+        else {
+            fire(p1); // bắn ngay lập tức cho các vũ khí khác
+        }
+    }
+});
+
+addEventListener('mouseup', e => {
+    if (e.button === 0) { isMouseDown = false; fireDuration = 0; }
+    else if (e.button === 2) { isRightMouseDown = false; }
+});
+
+c.addEventListener('contextmenu', e => e.preventDefault());
+
+function fire(ent) {
+    const w = weapons[ent.weapon];
+    if (ent.cd > 0) return;
+    if (ent.weapon === 'mine') return;
+
+    // ██████ LASER BLINK – BẮN LASER, XÓA LASER CŨ ██████
+    if (ent.weapon === 'laserblink') {
+        ent.cd = w.cd;
+        // Xóa laser cũ nếu có
+        if (laserBullet) {
+            const oldIndex = ent.bullets.indexOf(laserBullet);
+            if (oldIndex !== -1) ent.bullets.splice(oldIndex, 1);
+            laserBullet = null;
+        }
+        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+        const bullet = {
+            x: ent.x + 15,
+            y: ent.y + 15,
+            vx: Math.cos(angle) * w.speed,
+            vy: Math.sin(angle) * w.speed,
+            dmg: w.dmg,
+            color: w.color,
+            size: w.bulletSize,
+            lifetime: w.lifetime,
+            isLaserBlink: true
+        };
+        ent.bullets.push(bullet);
+        laserBullet = bullet;
+        createDamagePopup(ent.x + 15, ent.y + 15 - 20, 'LASER', '#ff66ff');
+        updateUIDisplay();
+        return;
+    }
+
+    if (ent.weapon === 'anchor') {
+        ent.cd = w.cd;
+        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+        ent.bullets.push({
+            x: ent.x + 15, y: ent.y + 15,
+            vx: Math.cos(angle) * w.speed,
+            vy: Math.sin(angle) * w.speed,
+            dmg: w.dmg,
+            color: w.color,
+            size: 8,
+            lifetime: 150,
+            isAnchorBullet: true,
+            anchorDuration: w.duration,
+            anchorRadius: w.radius,
+            anchorPull: w.pullStrength,
+            anchorSlow: w.slowFactor
+        });
+        return;
+    }
+
+    let spr = w.spread || 0.1;
+    let currentCd = w.cd;
+    let currentDmg = w.dmg;
+    let currentSpeed = w.speed;
+
+    if (w.isOverlord) {
+        currentCd = Math.max(w.minCd, w.cd - fireDuration * w.spinUpSpeed);
+        currentDmg = Math.max(w.minDmg, w.dmg - fireDuration * w.damageDecay);
+        currentSpeed = Math.min(w.maxSpeed, w.speed + fireDuration * w.speedIncrease);
+        if (fireDuration < 15) {
+            spr = w.spread + (fireDuration / 15) * (w.maxSpread - w.spread);
+        } else {
+            spr = w.maxSpread - ((fireDuration - 15) / 15) * (w.maxSpread - w.minSpread);
+            spr = Math.max(w.minSpread, spr);
+        }
+        ent.cd = currentCd;
+    }
+    else if (w.isScatterBurst) {
+        ent.cd = w.cd;
+        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+        for (let b = 0; b < w.burstCount; b++) {
+            for (let p = 0; p < w.pelletsPerShot; p++) {
+                const fa = angle + (Math.random() - 0.5) * w.spread;
+                ent.bullets.push({
+                    x: ent.x + 15, y: ent.y + 15,
+                    vx: Math.cos(fa) * w.speed,
+                    vy: Math.sin(fa) * w.speed,
+                    dmg: w.dmg,
+                    color: w.color,
+                    size: 4,
+                    lifetime: 300
+                });
+            }
+        }
+        return;
+    }
+    else {
+        ent.cd = w.cd;
+    }
+
+    const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+    for (let i = 0; i < (w.count || 1); i++) {
+        const fa = angle + (Math.random() - 0.5) * spr;
+        ent.bullets.push({
+            x: ent.x + 15, y: ent.y + 15,
+            vx: Math.cos(fa) * currentSpeed,
+            vy: Math.sin(fa) * currentSpeed,
+            dmg: currentDmg,
+            color: w.color,
+            homing: w.homing || false,
+            pierce: w.pierce || false,
+            size: w.size || 5,
+            grows: w.grows || false,
+            growSize: w.growSize || 0,
+            growDmg: w.growDmg || 0,
+            lifetime: 300
+        });
+    }
+    if (w.isOverlord) fireDuration++;
+}
+
+function update(deltaTime) {
+    if (isPaused) return;
+
+    document.getElementById('timer').innerText = ((Date.now() - startTime)/1000).toFixed(2) + 's';
+
+    // Di chuyển người chơi
+    let vx = 0, vy = 0;
+    if (keys.w) vy -= 5;
+    if (keys.s) vy += 5;
+    if (keys.a) vx -= 5;
+    if (keys.d) vx += 5;
+    p1.x += vx; if (walls.some(w => checkHit(p1, w))) p1.x -= vx;
+    p1.y += vy; if (walls.some(w => checkHit(p1, w))) p1.y -= vy;
+
+    cam.x = p1.x - c.width/2 + 15; cam.y = p1.y - c.height/2 + 15;
+    cam.x = Math.max(0, Math.min(cam.x, 1000 - c.width));
+    cam.y = Math.max(0, Math.min(cam.y, 600 - c.height));
+
+    // Chỉ OVERLORD X mới bắn liên tục khi giữ chuột
+    if (isMouseDown && p1.weapon === 'overlord') {
+        fire(p1);
+    } else {
+        if (fireDuration > 0) fireDuration = Math.max(0, fireDuration - 0.5);
+    }
+
+    if (p1.cd > 0) p1.cd--;
+
+    damagePopups = damagePopups.filter(p => { p.life--; p.y += p.vy; p.vy -= 0.05; return p.life > 0; });
+
+    // Anchor hút
+    anchors = anchors.filter(a => {
+        a.life--;
+
+        const dxBoss = a.x - (boss.x + boss.w/2);
+        const dyBoss = a.y - (boss.y + boss.h/2);
+        const distBoss = Math.hypot(dxBoss, dyBoss);
+        if (distBoss < a.radius && distBoss > 5) {
+            const pullX = (dxBoss / distBoss) * a.pullStrength;
+            const pullY = (dyBoss / distBoss) * a.pullStrength;
+            const steps = 5;
+            for (let s = 0; s < steps; s++) {
+                const newX = boss.x + pullX / steps;
+                const newY = boss.y + pullY / steps;
+                const tempBoss = { x: newX, y: newY, w: boss.w, h: boss.h };
+                let collides = false;
+                for (let w of walls) {
+                    if (checkHit(tempBoss, w)) {
+                        collides = true;
+                        break;
+                    }
+                }
+                if (!collides) {
+                    boss.x = newX;
+                    boss.y = newY;
+                } else {
+                    break;
+                }
+            }
+            boss.x = Math.max(30, Math.min(970 - boss.w, boss.x));
+            boss.y = Math.max(30, Math.min(570 - boss.h, boss.y));
+            boss.slowTimer = 5;
+            boss.slowFactor = a.slowFactor;
+        }
+
+        boss.minions.forEach(i => {
+            const dxI = a.x - (i.x + i.w/2);
+            const dyI = a.y - (i.y + i.h/2);
+            const distI = Math.hypot(dxI, dyI);
+            if (distI < a.radius && distI > 5) {
+                const pullX = (dxI / distI) * a.pullStrength * 1.5;
+                const pullY = (dyI / distI) * a.pullStrength * 1.5;
+                const steps = 5;
+                for (let s = 0; s < steps; s++) {
+                    const newX = i.x + pullX / steps;
+                    const newY = i.y + pullY / steps;
+                    const tempEnemy = { x: newX, y: newY, w: i.w, h: i.h };
+                    let collides = false;
+                    for (let w of walls) {
+                        if (checkHit(tempEnemy, w)) {
+                            collides = true;
+                            break;
+                        }
+                    }
+                    if (!collides) {
+                        i.x = newX;
+                        i.y = newY;
+                    } else {
+                        break;
+                    }
+                }
+                i.x = Math.max(30, Math.min(970 - i.w, i.x));
+                i.y = Math.max(30, Math.min(570 - i.h, i.y));
+            }
+        });
+
+        return a.life > 0;
+    });
+
+    if (laserBullet) {
+        laserBullet.lifetime--;
+        if (laserBullet.lifetime <= 0) {
+            const index = p1.bullets.indexOf(laserBullet);
+            if (index !== -1) p1.bullets.splice(index, 1);
+            laserBullet = null;
+            updateUIDisplay();
+        }
+    }
+
+    // BOSS AI
+    const d = cfg[currentMode];
+
+    // Tạo ảo ảnh
+    if (boss.illCd-- <= 0) {
+        const phase = phaseDefinitions[currentMode][bossPhase];
+        let illCount = d.ill;
+        if (phase.illMult) illCount = d.ill * phase.illMult;
+        if (phase.illCount) illCount = phase.illCount;
+        let newIlls = [];
+        for (let i = 0; i < illCount; i++) {
+            let ill = {
+                x: Math.random()*800+50,
+                y: Math.random()*500+50,
+                w:40, h:40, t: phase.illDuration || 200,
+                hp: 5
+            };
+            findSafePosition(ill, 10);
+            newIlls.push(ill);
+        }
+        boss.ill = newIlls;
+        boss.illCd = 300;
+    }
+    boss.ill = boss.ill.filter(i => i.t-- > 0 && i.hp > 0);
+
+    // Xử lý minions
+    boss.minions = boss.minions.filter(m => m.hp > 0);
+    boss.minions.forEach(m => {
+        let angle = Math.atan2(p1.y - m.y, p1.x - m.x);
+        m.x += Math.cos(angle) * 2;
+        m.y += Math.sin(angle) * 2;
+        if (walls.some(w => checkHit(m, w))) {
+            m.x -= Math.cos(angle) * 2;
+            m.y -= Math.sin(angle) * 2;
+        }
+        if (Math.random() < 0.02) {
+            let a = Math.atan2(p1.y - (m.y + m.w/2), p1.x - (m.x + m.h/2));
+            boss.bullets.push({
+                x: m.x + m.w/2, y: m.y + m.h/2,
+                vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+                dmg: 1, color: '#ff00ff', size: 5, lifetime: 180
+            });
+        }
+    });
+
+    // Boss di chuyển
+    let bvx = 0, bvy = 0, dangerBullet = null, minDist = 180;
+    p1.bullets.forEach(b => {
+        const dist = Math.hypot(b.x - (boss.x+25), b.y - (boss.y+25));
+        if (dist < minDist) { dangerBullet = b; minDist = dist; }
+    });
+    if (dangerBullet) {
+        const escapeAngle = Math.atan2(dangerBullet.vy, dangerBullet.vx) + Math.PI/2;
+        bvx = Math.cos(escapeAngle) * d.moveSpeed * boss.speedMult;
+        bvy = Math.sin(escapeAngle) * d.moveSpeed * boss.speedMult;
+    } else {
+        const attackAngle = Math.atan2(p1.y - boss.y, p1.x - boss.x);
+        bvx = Math.cos(attackAngle) * (d.moveSpeed * 0.7) * boss.speedMult;
+        bvy = Math.sin(attackAngle) * (d.moveSpeed * 0.7) * boss.speedMult;
+    }
+
+    if (boss.slowTimer > 0) {
+        bvx *= boss.slowFactor;
+        bvy *= boss.slowFactor;
+        boss.slowTimer--;
+    }
+
+    boss.x += bvx; if (walls.some(w => checkHit(boss, w))) boss.x -= bvx;
+    boss.y += bvy; if (walls.some(w => checkHit(boss, w))) boss.y -= bvy;
+
+    // Boss bắn đạn với cooldown 2 giây
+    if (boss.shootCd <= 0) {
+        const a = Math.atan2(p1.y - (boss.y+25), p1.x - (boss.x+25));
+        boss.bullets.push({
+            x: boss.x+25, y: boss.y+25,
+            vx: Math.cos(a)*7, vy: Math.sin(a)*7,
+            dmg: boss.damage || 1, color: 'red', size: 6, lifetime: 180
+        });
+        boss.shootCd = 120;
+    } else {
+        boss.shootCd--;
+    }
+
+    // Kỹ năng đặc biệt
+    if (boss.skills.blink) {
+        boss.blinkCd--;
+        if (boss.blinkCd <= 0) {
+            let attempts = 10;
+            let success = false;
+            while (attempts-- > 0 && !success) {
+                let angle = Math.random() * Math.PI * 2;
+                let dist = 100 + Math.random() * 100;
+                let newX = p1.x + Math.cos(angle) * dist - boss.w/2;
+                let newY = p1.y + Math.sin(angle) * dist - boss.h/2;
+                newX = Math.max(30, Math.min(970 - boss.w, newX));
+                newY = Math.max(30, Math.min(570 - boss.h, newY));
+                let tempBoss = { x: newX, y: newY, w: boss.w, h: boss.h };
+                let collides = false;
+                for (let w of walls) {
+                    if (checkHit(tempBoss, w)) {
+                        collides = true;
+                        break;
+                    }
+                }
+                if (!collides) {
+                    boss.x = newX;
+                    boss.y = newY;
+                    success = true;
+                }
+            }
+            createExplosionEffect(boss.x + boss.w/2, boss.y + boss.h/2);
+            boss.blinkCd = 240;
+        }
+    }
+
+    if (boss.skills.swap) {
+        boss.swapCd--;
+        if (boss.swapCd <= 0) {
+            let tempX = p1.x, tempY = p1.y;
+            p1.x = boss.x;
+            p1.y = boss.y;
+            boss.x = tempX;
+            boss.y = tempY;
+            pushOutOfWalls(p1);
+            pushOutOfWalls(boss);
+            createExplosionEffect(p1.x + p1.w/2, p1.y + p1.h/2);
+            createExplosionEffect(boss.x + boss.w/2, boss.y + boss.h/2);
+            boss.swapCd = 300;
+        }
+    }
+
+    if (boss.skills.copyBullet) {
+        boss.copyCd--;
+        if (boss.copyCd <= 0) {
+            let bulletsToCopy = p1.bullets.filter(b => !b.isLaserBlink);
+            bulletsToCopy.forEach(b => {
+                boss.bullets.push({
+                    x: boss.x + 25, y: boss.y + 25,
+                    vx: b.vx, vy: b.vy,
+                    dmg: b.dmg,
+                    color: '#ff0000',
+                    size: b.size,
+                    lifetime: b.lifetime
+                });
+            });
+            boss.copyCd = 1200;
+        }
+    }
+
+    if (boss.skills.controlBullet) {
+        boss.controlCd--;
+        if (boss.controlCd <= 0) {
+            p1.bullets.forEach(b => {
+                if (!b.isLaserBlink) {
+                    let angle = Math.atan2(p1.y - b.y, p1.x - b.x);
+                    b.vx = Math.cos(angle) * 5;
+                    b.vy = Math.sin(angle) * 5;
+                }
+            });
+            boss.controlCd = 1800;
+        }
+    }
+
+    // Boss dẫm mìn
+    for (let i = mines.length - 1; i >= 0; i--) {
+        const mine = mines[i];
+        const mineRect = { x: mine.x - mine.w/2, y: mine.y - mine.h/2, w: mine.w, h: mine.h };
+        if (checkHit(boss, mineRect)) {
+            boss.hp -= 20;
+            createDamagePopup(boss.x + boss.w/2, boss.y, 20, '#ff8800');
+            bossHitEffect = 15;
+            explodeMine(mine);
+            mines.splice(i, 1);
+            updateUIDisplay();
+        }
+    }
+
+    // ██████ XỬ LÝ ĐẠN (ĐÃ SỬA LASER) ██████
+    [p1, boss].forEach(ent => {
+        if (ent.cd > 0 && ent.weapon !== 'mine') ent.cd--;
+        ent.bullets = ent.bullets.filter(b => {
+            if (b.lifetime !== undefined) {
+                b.lifetime--;
+                if (b.lifetime <= 0) {
+                    if (b === laserBullet) laserBullet = null;
+                    if (b.isAnchorBullet) {
+                        createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
+                        updateUIDisplay();
+                    }
+                    return false;
+                }
+            }
+
+            // ██████ LASER: XỬ LÝ DI CHUYỂN VÀ VA CHẠM TƯỜNG ██████
+            if (b.isLaserBlink) {
+                let collided = false;
+                // Di chuyển từng bước nhỏ và kiểm tra tường
+                for (let step = 0; step < 2; step++) {
+                    const oldX = b.x;
+                    const oldY = b.y;
+                    b.x += b.vx / 2;
+                    b.y += b.vy / 2;
+                    for (let w of walls) {
+                        if (pointInWall(b.x, b.y, w)) {
+                            collided = true;
+                            b.x = oldX;
+                            b.y = oldY;
+                            break;
+                        }
+                    }
+                    if (collided) {
+                        b.vx = 0;
+                        b.vy = 0;
+                        break;
+                    }
+                }
+            }
+            // ANCHOR BULLET
+            else if (b.isAnchorBullet && ent === p1) {
+                for (let w of walls) {
+                    if (pointInWall(b.x, b.y, w)) {
+                        createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
+                        updateUIDisplay();
+                        return false;
+                    }
+                }
+                for (let step = 0; step < 2; step++) {
+                    b.x += b.vx / 2;
+                    b.y += b.vy / 2;
+                    for (let w of walls) {
+                        if (pointInWall(b.x, b.y, w)) {
+                            createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
+                            updateUIDisplay();
+                            return false;
+                        }
+                    }
+                }
+            }
+            // CÁC ĐẠN KHÁC
+            else {
+                for (let step = 0; step < 2; step++) {
+                    b.x += b.vx / 2;
+                    b.y += b.vy / 2;
+                    for (let w of walls) {
+                        if (pointInWall(b.x, b.y, w)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            if (b.grows) {
+                if (b.growSize) b.size += b.growSize;
+                else b.size += 0.1;
+                if (b.growDmg) b.dmg += b.growDmg;
+                else b.dmg += 0.1;
+            }
+
+            if (b.homing && ent === p1) {
+                const targets = [boss, ...boss.ill, ...boss.minions].filter(t => t.hp > 0);
+                if (targets.length > 0) {
+                    let near = targets[0], dMin = Infinity;
+                    targets.forEach(t => {
+                        const dist = Math.hypot(t.x - b.x, t.y - b.y);
+                        if (dist < dMin) { dMin = dist; near = t; }
+                    });
+                    const a = Math.atan2(near.y - b.y, near.x - b.x);
+                    b.vx += Math.cos(a) * 0.5;
+                    b.vy += Math.sin(a) * 0.5;
+                    const s = Math.hypot(b.vx, b.vy);
+                    if (s > 0) {
+                        b.vx = (b.vx / s) * weapons.rocket.speed;
+                        b.vy = (b.vy / s) * weapons.rocket.speed;
+                    }
+                }
+            }
+
+            // ██████ VA CHẠM ENEMY (LASER GÂY DMG) ██████
+            const enemies = (ent === p1) ? [boss, ...boss.ill, ...boss.minions].filter(e => e.hp > 0) : [p1];
+            for (let e of enemies) {
+                if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
+                    // LASER gây sát thương
+                    e.hp -= b.dmg;
+                    createDamagePopup(e.x + e.w/2, e.y, b.dmg, ent === p1 ? '#ff66ff' : '#ff8888');
+                    if (e === boss) bossHitEffect = 10;
+                    if (e === p1) createDamagePopup(e.x + e.w/2, e.y, b.dmg, '#ff4444');
+                    
+                    // Laser xuyên qua (không biến mất)
+                    if (!b.isLaserBlink) {
+                        return b.pierce || false;
+                    }
+                }
+            }
+
+            return true;
+        });
+    });
+
+    if (laserBullet && !p1.bullets.includes(laserBullet)) {
+        laserBullet = null;
+    }
+
+    updateUIDisplay();
+    if (bossHitEffect > 0) bossHitEffect--;
+    if (p1.hp <= 0) endGame(false);
+    if (boss.hp <= 0) endGame(true);
+}
+
+function draw() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+
+    ctx.fillStyle = '#444';
+    walls.forEach(w => { ctx.fillRect(w.x, w.y, w.w, w.h); ctx.strokeStyle = '#777'; ctx.strokeRect(w.x, w.y, w.w, w.h); });
+
+    anchors.forEach(a => {
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
+        ctx.fillStyle = a.color + '22';
+        ctx.fill();
+        ctx.strokeStyle = a.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = a.color;
+        ctx.beginPath();
+        ctx.arc(a.x, a.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    if (laserBullet && laserBullet.lifetime > 0) {
+        ctx.fillStyle = laserBullet.color;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = laserBullet.color;
+        ctx.beginPath();
+        ctx.arc(laserBullet.x, laserBullet.y, laserBullet.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+    }
+
+    ctx.globalAlpha = 0.6;
+    boss.ill.forEach(i => { ctx.strokeStyle = '#ff5555'; ctx.lineWidth = 2; ctx.strokeRect(i.x, i.y, i.w, i.h); });
+    ctx.globalAlpha = 1;
+
+    boss.minions.forEach(m => {
+        ctx.fillStyle = m.color || '#ff00ff';
+        ctx.fillRect(m.x, m.y, m.w, m.h);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(m.x, m.y, m.w, m.h);
+    });
+
+    mines.forEach(m => {
+        ctx.fillStyle = m.color;
+        ctx.fillRect(m.x - m.w/2, m.y - m.h/2, m.w, m.h);
+        ctx.strokeStyle = '#aaa';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(m.x - m.w/2, m.y - m.h/2, m.w, m.h);
+    });
+
+    p1.bullets.forEach(b => {
+        if (b !== laserBullet) {
+            ctx.fillStyle = b.color;
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
+            ctx.fill();
+        }
+    });
+    boss.bullets.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
+        ctx.fill();
+    });
+
+    if (bossHitEffect > 0) {
+        ctx.fillStyle = `rgba(255,100,100,${bossHitEffect/20})`;
+        ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+    }
+    ctx.fillStyle = '#e74c3c';
+    ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+
+    ctx.fillStyle = '#3498db';
+    ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+    damagePopups.forEach(p => {
+        ctx.globalAlpha = p.life/60;
+        ctx.fillStyle = p.color;
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(p.text, p.x, p.y);
+    });
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(-cam.x, -cam.y);
+    explosionEffects = explosionEffects.filter(eff => {
+        eff.life--;
+        ctx.globalAlpha = eff.life / 16;
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(eff.x, eff.y, eff.radius * (1 - eff.life/16) + 5, 0, Math.PI*2);
+        ctx.fillStyle = '#ffaa00';
+        ctx.fill();
+        return eff.life > 0;
+    });
+    ctx.restore();
+
+    // Fog of war
+    fctx.clearRect(0,0,fogC.width,fogC.height);
+    fctx.fillStyle = 'rgba(0,0,0,0.95)';
+    fctx.fillRect(0,0,fogC.width,fogC.height);
+    fctx.globalCompositeOperation = 'destination-out';
+    const g = fctx.createRadialGradient(
+        p1.x - cam.x + 15, p1.y - cam.y + 15, 20,
+        p1.x - cam.x + 15, p1.y - cam.y + 15, p1.vision
+    );
+    g.addColorStop(0, 'white');
+    g.addColorStop(1, 'transparent');
+    fctx.fillStyle = g;
+    fctx.beginPath();
+    fctx.arc(p1.x - cam.x + 15, p1.y - cam.y + 15, p1.vision, 0, Math.PI*2);
+    fctx.fill();
+    ctx.drawImage(fogC, 0, 0);
+}
+
+function gameLoop(timestamp) {
+    if (!lastTime) lastTime = timestamp;
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
+    if (deltaTime > 0) { update(deltaTime); draw(); }
+    requestAnimationFrame(gameLoop);
+}
+
+updateBestDisplay();
+initGameVars('normal');
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
