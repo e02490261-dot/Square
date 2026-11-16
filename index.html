@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pro Shooter: LASER BLINK + NHẠC NỀN</title>
+    <!-- Đã thêm icon cho trang web -->
+    <link rel="icon" type="image/png" href="icon.png">
     <style>
         /* CSS giữ nguyên từ bản trước */
         body {
@@ -850,7 +852,7 @@ function fire(ent) {
         const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
         for (let b = 0; b < w.burstCount; b++) {
             for (let p = 0; p < w.pelletsPerShot; p++) {
-                const fa = angle + (Math.random() - 0.5) * w.spread;
+                const fa = angle + (Math.random() - 0.5) * spr;
                 ent.bullets.push({
                     x: ent.x + 15, y: ent.y + 15,
                     vx: Math.cos(fa) * w.speed,
