@@ -2,12 +2,10 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Square: Exclusive to highly skilled individuals</title>
-    <!-- Đã thêm icon cho trang web -->
     <link rel="icon" type="image/png" href="icon.png">
     <style>
-        /* CSS giữ nguyên từ bản trước */
         body {
             margin: 0;
             background: #050505;
@@ -16,12 +14,17 @@
             text-align: center;
             overflow: hidden;
             user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
         }
         canvas {
             background: #111;
             border: 2px solid #333;
+            box-sizing: border-box;
             display: block;
             margin: 0 auto;
+            width: min(100vw, 166.67vh);
+            height: auto;
             box-shadow: 0 0 40px #000;
             cursor: crosshair;
         }
@@ -36,6 +39,9 @@
             border: 1px solid #ffd700; 
             z-index: 1000; 
             min-width: 320px; 
+            max-width: 90vw;
+            max-height: 85vh;
+            overflow-y: auto;
             box-shadow: 0 0 50px #000;
         }
         .btn { 
@@ -57,9 +63,18 @@
         .normal { background: #2980b9; } 
         .hard { background: #d35400; } 
         .insane { background: #c0392b; }
+        .endless { background: linear-gradient(135deg, #8e44ad, #c0392b); }
         .replay-btn { background: #f1c40f; color: #000; } 
         .menu-btn { background: #444; }
         .btn:hover { transform: scale(1.02); filter: brightness(1.2); }
+        .best-txt {
+            font-size: 12px;
+            font-weight: normal;
+            opacity: 0.75;
+            margin-left: 6px;
+            text-transform: none;
+            letter-spacing: 0;
+        }
         .stats { 
             position: absolute; 
             top: 20px; 
@@ -78,28 +93,176 @@
         .hp-numbers { font-weight: bold; font-family: monospace; font-size: 14px; }
         .hp-percent { font-size: 11px; color: #aaa; background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; }
         #timer { color: #ffd700; font-family: monospace; font-size: 24px; font-weight: bold; margin-top: 15px; text-align: center; background: rgba(255,215,0,0.1); padding: 8px; border-radius: 5px; }
+        #wave-display { color: #ff66ff; font-family: monospace; font-size: 18px; font-weight: bold; margin-top: 8px; text-align: center; }
         #wp-display { font-size: 14px; color: #0ff; margin-top: 12px; font-weight: bold; text-align: center; background: rgba(0,255,255,0.1); padding: 6px; border-radius: 5px; }
         .controls { position: absolute; bottom: 20px; left: 20px; background: rgba(0,0,0,0.9); padding: 15px; border-radius: 8px; border: 1px solid #444; min-width: 240px; font-size: 12px; color: #aaa; z-index: 100; }
         .pause-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 999; flex-direction: column; }
         .key { display: inline-block; background: #333; padding: 2px 8px; border-radius: 4px; margin: 0 2px; font-family: monospace; }
         .boss-name { color: #ff6b6b; font-weight: bold; text-transform: uppercase; font-size: 12px; }
-        /* Nút điều khiển nhạc */
-        #music-control {
+
+        #hud-buttons {
             position: fixed;
             bottom: 20px;
             right: 20px;
+            display: flex;
+            gap: 8px;
+            z-index: 1001;
+        }
+        .hud-btn {
             background: rgba(0,0,0,0.7);
             color: white;
             padding: 8px 12px;
             border-radius: 20px;
-            z-index: 1001;
             font-size: 14px;
             cursor: pointer;
             border: 1px solid #ffd700;
         }
-        #music-control:hover {
-            background: rgba(255,215,0,0.3);
+        .hud-btn:hover { background: rgba(255,215,0,0.3); }
+        #pause-btn { display: none; }
+
+        /* ====== MOBILE TOUCH CONTROLS ====== */
+        #mobile-controls { display: none; }
+        @media (pointer: coarse) {
+            body.playing #mobile-controls { display: block; }
+            .controls { display: none !important; }
+            #hud-buttons { bottom: auto; top: 20px; right: 20px; }
+            .stats { transform: scale(0.6); transform-origin: top left; opacity: 0.85; }
         }
+        #joystick-zone {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 140px;
+            height: 140px;
+            z-index: 2000;
+        }
+        #joystick-base {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,215,0,0.4);
+            position: relative;
+        }
+        #joystick-knob {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255,215,0,0.6);
+            position: absolute;
+            top: 40px;
+            left: 40px;
+            pointer-events: none;
+        }
+        #action-buttons {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 2000;
+        }
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255,215,0,0.3);
+            border: 2px solid #ffd700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-btn:active { background: rgba(255,215,0,0.7); transform: scale(0.95); }
+        .touch-btn.secondary { background: rgba(255,102,255,0.3); border-color: #ff66ff; }
+        .touch-btn.tertiary { background: rgba(0,255,255,0.3); border-color: #0ff; width: 55px; height: 55px; font-size: 20px; }
+
+        /* ====== ACHIEVEMENT TOAST ====== */
+        .achievement-toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #000;
+            padding: 15px 25px;
+            border-radius: 10px;
+            z-index: 10000;
+            box-shadow: 0 4px 30px rgba(255, 215, 0, 0.8);
+            animation: achIn 0.5s ease-out;
+            font-weight: bold;
+            text-align: center;
+            min-width: 260px;
+        }
+        .achievement-toast .ach-icon { font-size: 28px; display: block; margin-bottom: 5px; }
+        .achievement-toast .ach-title { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 1px; }
+        .achievement-toast .ach-name { font-size: 18px; margin-top: 3px; }
+        @keyframes achIn {
+            from { transform: translate(-50%, -80px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        .achievement-toast.out { animation: achOut 0.4s ease-in forwards; }
+        @keyframes achOut {
+            to { transform: translate(-50%, -80px); opacity: 0; }
+        }
+
+        /* ====== LEADERBOARD / ACHIEVEMENTS MODAL ====== */
+        .tab-bar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            cursor: pointer;
+            background: #222;
+            color: #888;
+            border: none;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .tab.active { background: #ffd700; color: #000; }
+        .tab-content { display: none; text-align: left; }
+        .tab-content.active { display: block; }
+        .lb-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.05);
+            margin: 4px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .lb-row.top1 { background: rgba(255,215,0,0.25); }
+        .lb-row.top2 { background: rgba(192,192,192,0.2); }
+        .lb-row.top3 { background: rgba(205,127,50,0.2); }
+        .lb-rank  { width: 30px; flex-shrink: 0; }
+        .lb-name  { flex: 1; text-align: left; margin-left: 10px; color: #ffd700;
+                    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .lb-score { min-width: 70px; text-align: right; font-weight: bold; }
+        .lb-date  { width: 70px; text-align: right; color: #666; margin-left: 10px; font-size: 11px; }
+
+        .ach-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 6px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 6px;
+            gap: 12px;
+        }
+        .ach-item.locked { opacity: 0.4; }
+        .ach-item .ach-icon-sm { font-size: 24px; }
+        .ach-item .ach-info { flex: 1; text-align: left; }
+        .ach-item .ach-info b { display: block; color: #ffd700; font-size: 13px; }
+        .ach-item .ach-info span { font-size: 11px; color: #aaa; }
     </style>
 </head>
 <body>
@@ -110,11 +273,49 @@
     <button class="btn normal" onclick="startGame('normal')">THƯỜNG <span id="best-normal" class="best-txt"></span></button>
     <button class="btn hard" onclick="startGame('hard')">KHÓ <span id="best-hard" class="best-txt"></span></button>
     <button class="btn insane" onclick="startGame('insane')">ÁC MỘNG <span id="best-insane" class="best-txt"></span></button>
-    <div style="margin-top:20px; color:#aaa; font-size:14px;">
-        <p>WASD: Di chuyển | Chuột trái: Bắn / Đặt mìn / Bắn neo | Chuột phải: Dịch chuyển (LASER BLINK) / Kích nổ mìn</p>
-        <p><span class="key">0-8</span> : Đổi vũ khí | <span class="key">P</span> : Tạm dừng | <span class="key">R</span> : Chơi lại | <span class="key">ESC</span> : Menu</p>
-        <p><span style="color:#ff66ff">LASER BLINK (7)</span> : Chuột trái – bắn laser (dừng khi chạm tường) | Chuột phải – dịch chuyển đến laser</p>
+    <button class="btn endless" onclick="startGame('endless')">♾️ VÔ TẬN <span id="best-endless" class="best-txt"></span></button>
+    
+    <div style="margin-top:20px; text-align:left;">
+        <label for="player-name-input" style="color:#aaa; font-size:12px;">Tên của bạn (hiển thị trên BXH):</label>
+        <input id="player-name-input" type="text" maxlength="16" autocomplete="off"
+               style="display:block; width:100%; box-sizing:border-box; margin-top:5px; padding:8px;
+                      background:#222; color:#ffd700; border:1px solid #555; border-radius:4px;
+                      text-align:center; font-size:14px; font-weight:bold;">
     </div>
+    <button class="btn menu-btn" onclick="showModal('leaderboard-modal')" style="margin-top:10px;">🏆 BẢNG XẾP HẠNG</button>
+    <button class="btn menu-btn" onclick="showModal('achievements-modal')">🎖️ THÀNH TỰU</button>
+    
+    <div style="margin-top:20px; color:#aaa; font-size:14px;">
+        <p>WASD: Di chuyển | Chuột trái: Bắn | Chuột phải: Dịch chuyển / Kích nổ</p>
+        <p><span class="key">0-8</span> Đổi vũ khí | <span class="key">P</span> Tạm dừng | <span class="key">R</span> Chơi lại | <span class="key">ESC</span> Menu</p>
+    </div>
+</div>
+
+<div id="leaderboard-modal" class="overlay" style="display:none">
+    <h2 style="color:#ffd700; margin-top:0;">🏆 BẢNG XẾP HẠNG (TOP 100)</h2>
+    <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('lb-easy', this)">DỄ</button>
+        <button class="tab" onclick="switchTab('lb-normal', this)">THƯỜNG</button>
+        <button class="tab" onclick="switchTab('lb-hard', this)">KHÓ</button>
+        <button class="tab" onclick="switchTab('lb-insane', this)">ÁC MỘNG</button>
+        <button class="tab" onclick="switchTab('lb-endless', this)">♾️</button>
+    </div>
+    <div id="lb-easy" class="tab-content active"></div>
+    <div id="lb-normal" class="tab-content"></div>
+    <div id="lb-hard" class="tab-content"></div>
+    <div id="lb-insane" class="tab-content"></div>
+    <div id="lb-endless" class="tab-content"></div>
+    <p id="lb-offline-notice" style="color:#ff6666; font-size:11px; text-align:center; display:none; margin-top:10px;">
+        ⚠️ Chưa kết nối Firebase — chỉ hiển thị thành tích trên máy này.
+    </p>
+    <button class="btn replay-btn" onclick="renderLeaderboard()" style="margin-top:15px;">🔄 LÀM MỚI</button>
+    <button class="btn menu-btn" onclick="hideModal('leaderboard-modal')">ĐÓNG</button>
+</div>
+
+<div id="achievements-modal" class="overlay" style="display:none">
+    <h2 style="color:#ffd700; margin-top:0;">🎖️ THÀNH TỰU</h2>
+    <div id="achievements-list"></div>
+    <button class="btn menu-btn" onclick="hideModal('achievements-modal')" style="margin-top:20px;">ĐÓNG</button>
 </div>
 
 <div id="game-over-ui" class="overlay" style="display:none">
@@ -138,9 +339,7 @@
             <b style="color:#2ecc71">NGƯỜI CHƠI</b>
             <div id="p1-hp-percent" class="hp-percent">100%</div>
         </div>
-        <div class="hp-text">
-            <span id="p1-hp-numbers" class="hp-numbers">20/20</span>
-        </div>
+        <div class="hp-text"><span id="p1-hp-numbers" class="hp-numbers">20/20</span></div>
         <div class="hp-bar"><div id="p1-fill" class="hp-fill" style="background:#2ecc71; width:100%"></div></div>
     </div>
     <div style="margin-bottom:15px;">
@@ -155,6 +354,7 @@
         <div class="hp-bar"><div id="boss-fill" class="hp-fill" style="background:#e74c3c; width:100%"></div></div>
     </div>
     <div id="timer">0.00s</div>
+    <div id="wave-display" style="display:none;">WAVE 1</div>
     <div id="wp-display">VŨ KHÍ: PISTOL</div>
     <div id="mine-count" style="font-size:12px; color:#ffaa00; margin-top:8px;">MÌN: 0</div>
     <div id="anchor-count" style="font-size:12px; color:#aa66cc; margin-top:4px;">NEO: 0/2</div>
@@ -164,108 +364,405 @@
 <div class="controls" style="display:none;">
     <b style="color:#ffd700">ĐIỀU KHIỂN</b><br>
     <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> : Di chuyển<br>
-    <span style="color:#ff66ff">LASER BLINK (7)</span> : Chuột trái – bắn laser | Chuột phải – dịch chuyển đến laser<br>
-    <span style="color:#aa66cc">ANCHOR (8)</span> : Chuột trái – bắn neo | Chuột phải – kích nổ mìn<br>
-    <span style="color:#ffaa00">MINE (3)</span> : Chuột trái đặt, chuột phải kích nổ<br>
+    <span style="color:#ff66ff">LASER BLINK (7)</span> : Trái – bắn laser | Phải – dịch chuyển<br>
+    <span style="color:#aa66cc">ANCHOR (8)</span> : Trái – bắn neo | Phải – kích nổ mìn<br>
+    <span style="color:#ffaa00">MINE (3)</span> : Trái đặt, phải kích nổ<br>
     <span class="key">0-8</span> : Đổi vũ khí
 </div>
 
 <canvas id="game" width="1000" height="600"></canvas>
 
-<!-- Nhạc nền "Truy Đuổi Trong Làn Băng" -->
 <audio id="bg-music" loop preload="auto">
     <source src="truy_duoi_trong_lan_bang.mp3" type="audio/mpeg">
     Trình duyệt của bạn không hỗ trợ audio.
 </audio>
 
-<!-- Nút điều khiển nhạc -->
-<div id="music-control">🔇 Đang tắt</div>
+<div id="hud-buttons">
+    <div class="hud-btn" id="pause-btn">⏸ Tạm dừng</div>
+    <div class="hud-btn" id="sfx-control">🔔 SFX: Bật</div>
+    <div class="hud-btn" id="music-control">🔇 Đang tắt</div>
+</div>
+
+<div id="mobile-controls">
+    <div id="joystick-zone">
+        <div id="joystick-base"><div id="joystick-knob"></div></div>
+    </div>
+    <div id="action-buttons">
+        <div class="touch-btn tertiary" id="btn-weapon">🔧</div>
+        <div class="touch-btn secondary" id="btn-right">⚡</div>
+        <div class="touch-btn" id="btn-fire">🔫</div>
+    </div>
+</div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
 // ============================================================
-// SQUARE: EXCLUSIVE TO HIGHLY SKILLED INDIVIDUALS
+// SQUARE: EXCLUSIVE — FULL EDITION + FIREBASE TOP 100
 // ============================================================
 
-// --- Xử lý nhạc nền ---
-const bgMusic = document.getElementById('bg-music');
-const musicControl = document.getElementById('music-control');
-let musicEnabled = false;
+// ===== FIREBASE CONFIG =====
+const firebaseConfig = {
+  apiKey: "AIzaSyDlHzWENZ13KEREWT8W8k5fmhZCYsqX84",
+  authDomain: "square-bd9a2.firebaseapp.com",
+  databaseURL: "https://square-bd9a2-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "square-bd9a2",
+  storageBucket: "square-bd9a2.firebasestorage.app",
+  messagingSenderId: "655157023130",
+  appId: "1:655157023130:web:376a2f73b000abbc8eea23",
+  measurementId: "G-8XJ856FWF"
+};
 
-function toggleMusic() {
-    if (musicEnabled) {
-        bgMusic.pause();
-        musicControl.innerHTML = '🔇 Đang tắt';
+let db = null;
+let firebaseReady = false;
+try {
+    if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_')) {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        firebaseReady = true;
+        console.log('✅ Firebase connected:', firebaseConfig.projectId);
     } else {
-        bgMusic.play().catch(e => {
-            console.log('Không thể phát nhạc tự động, cần tương tác trước');
-            musicControl.innerHTML = '🔊 Bấm để phát';
-        });
-        musicControl.innerHTML = '🔊 Đang phát';
+        console.warn('⚠️ Firebase config chưa đầy đủ — dùng offline mode');
     }
-    musicEnabled = !musicEnabled;
+} catch (e) {
+    console.error('❌ Firebase init failed:', e);
 }
 
-musicControl.addEventListener('click', toggleMusic);
+let playerName = localStorage.getItem('playerName')
+    || 'Player' + Math.floor(Math.random() * 9000 + 1000);
 
-// Thử phát tự động khi tải trang
-window.addEventListener('load', () => {
-    bgMusic.play().then(() => {
+// ============ AUDIO ============
+const bgMusic = document.getElementById('bg-music');
+const musicControl = document.getElementById('music-control');
+const sfxControl = document.getElementById('sfx-control');
+const pauseBtn = document.getElementById('pause-btn');
+let musicEnabled = false;
+
+function canPlayMusic() {
+    return document.getElementById('pause-ui').style.display !== 'flex' &&
+           document.getElementById('game-over-ui').style.display !== 'block';
+}
+function toggleMusic() {
+    if (musicEnabled) {
+        bgMusic.pause(); musicEnabled = false;
+        musicControl.innerHTML = '🔇 Đang tắt';
+    } else {
         musicEnabled = true;
         musicControl.innerHTML = '🔊 Đang phát';
-    }).catch(() => {
-        musicEnabled = false;
-        musicControl.innerHTML = '🔇 Bấm để phát';
-    });
+        if (canPlayMusic()) bgMusic.play().catch(() => {
+            musicControl.innerHTML = '🔇 Không phát được';
+            musicEnabled = false;
+        });
+    }
+}
+musicControl.addEventListener('click', toggleMusic);
+window.addEventListener('load', () => {
+    bgMusic.play().then(() => { musicEnabled = true; musicControl.innerHTML = '🔊 Đang phát'; })
+        .catch(() => { musicEnabled = false; musicControl.innerHTML = '🔇 Bấm để phát'; });
 });
 
-// Tạm dừng nhạc khi game pause
+let sfxEnabled = true;
+let audioCtx = null;
+const lastSfx = {};
+function sfx(type) {
+    if (!sfxEnabled) return;
+    const now = performance.now();
+    if (lastSfx[type] && now - lastSfx[type] < 40) return;
+    lastSfx[type] = now;
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const presets = {
+            shoot:      { f1: 600, f2: 200, dur: 0.08, wave: 'square',   vol: 0.04 },
+            heavy:      { f1: 200, f2: 60,  dur: 0.25, wave: 'sawtooth', vol: 0.07 },
+            hit:        { f1: 300, f2: 100, dur: 0.06, wave: 'triangle', vol: 0.05 },
+            blink:      { f1: 900, f2: 300, dur: 0.15, wave: 'sine',     vol: 0.07 },
+            boom:       { f1: 150, f2: 40,  dur: 0.30, wave: 'sawtooth', vol: 0.08 },
+            hurt:       { f1: 180, f2: 80,  dur: 0.20, wave: 'square',   vol: 0.07 },
+            bossShoot:  { f1: 400, f2: 120, dur: 0.18, wave: 'sawtooth', vol: 0.05 },
+            wave:       { f1: 400, f2: 800, dur: 0.30, wave: 'sine',     vol: 0.06 },
+            achievement:{ f1: 600, f2: 1200, dur: 0.40, wave: 'triangle', vol: 0.08 }
+        };
+        const p = presets[type];
+        if (!p) return;
+        const t = audioCtx.currentTime;
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        osc.type = p.wave;
+        osc.frequency.setValueAtTime(p.f1, t);
+        osc.frequency.exponentialRampToValueAtTime(p.f2, t + p.dur);
+        g.gain.setValueAtTime(p.vol, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + p.dur);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(t); osc.stop(t + p.dur);
+    } catch (e) {}
+}
+sfxControl.addEventListener('click', () => {
+    sfxEnabled = !sfxEnabled;
+    sfxControl.innerHTML = sfxEnabled ? '🔔 SFX: Bật' : '🔕 SFX: Tắt';
+});
+
+// ============ SCREEN SHAKE ============
+let screenShake = { intensity: 0, duration: 0 };
+function triggerShake(intensity, duration) {
+    screenShake.intensity = Math.max(screenShake.intensity, intensity);
+    screenShake.duration = Math.max(screenShake.duration, duration);
+}
+
+// ============ ACHIEVEMENTS ============
+const ACHIEVEMENTS = {
+    firstWin:   { icon: '🥇', name: 'First Blood',        desc: 'Thắng lần đầu tiên' },
+    speedrun:   { icon: '⚡', name: 'Speedrun',           desc: 'Thắng dưới 30 giây' },
+    noDamage:   { icon: '🛡️', name: 'Untouchable',        desc: 'Thắng mà không mất máu' },
+    insaneWin:  { icon: '💀', name: 'Nightmare Slayer',   desc: 'Thắng độ khó ÁC MỘNG' },
+    allModes:   { icon: '🏆', name: 'Completionist',      desc: 'Thắng cả 4 độ khó' },
+    laserKill:  { icon: '🔮', name: 'Laser Master',       desc: 'Kết liễu boss bằng LASER BLINK' },
+    sniperKill: { icon: '🎯', name: 'Sharpshooter',       desc: 'Kết liễu boss bằng SNIPER' },
+    mineKill:   { icon: '💣', name: 'Demolition',         desc: 'Kết liễu boss bằng MÌN' },
+    endless10:  { icon: '🌊', name: 'Endless Survivor',   desc: 'Đạt wave 10 ở chế độ VÔ TẬN' },
+    endless20:  { icon: '🔥', name: 'Infinite Legend',    desc: 'Đạt wave 20 ở chế độ VÔ TẬN' },
+    noHitWave5: { icon: '👻', name: 'Phantom',            desc: 'Endless: đạt wave 5 không mất máu' }
+};
+let unlockedAchievements = JSON.parse(localStorage.getItem('achievements') || '{}');
+
+function unlockAchievement(id) {
+    if (unlockedAchievements[id]) return;
+    unlockedAchievements[id] = Date.now();
+    localStorage.setItem('achievements', JSON.stringify(unlockedAchievements));
+    showAchievementToast(id);
+    sfx('achievement');
+}
+function showAchievementToast(id) {
+    const a = ACHIEVEMENTS[id];
+    if (!a) return;
+    const toast = document.createElement('div');
+    toast.className = 'achievement-toast';
+    toast.style.top = (80 + document.querySelectorAll('.achievement-toast').length * 95) + 'px';
+    toast.innerHTML = `<span class="ach-icon">${a.icon}</span>
+                       <div class="ach-title">Thành tựu mở khoá</div>
+                       <div class="ach-name">${a.name}</div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('out'), 3000);
+    setTimeout(() => toast.remove(), 3500);
+}
+function renderAchievements() {
+    const list = document.getElementById('achievements-list');
+    list.innerHTML = '';
+    for (const id in ACHIEVEMENTS) {
+        const a = ACHIEVEMENTS[id];
+        const unlocked = !!unlockedAchievements[id];
+        const div = document.createElement('div');
+        div.className = 'ach-item' + (unlocked ? '' : ' locked');
+        div.innerHTML = `<div class="ach-icon-sm">${unlocked ? a.icon : '🔒'}</div>
+                         <div class="ach-info"><b>${a.name}</b><span>${a.desc}</span></div>`;
+        list.appendChild(div);
+    }
+}
+
+// ============ LEADERBOARD ============
+let leaderboard = JSON.parse(localStorage.getItem('leaderboard') ||
+    '{"easy":[],"normal":[],"hard":[],"insane":[],"endless":[]}');
+
+function sortAndTrimLeaderboard(mode, list) {
+    const clean = (Array.isArray(list) ? list : []).filter(Boolean);
+    clean.sort((a, b) => {
+        if (mode === 'endless') return (Number(b.wave) || 0) - (Number(a.wave) || 0);
+        return (Number(a.time) || Infinity) - (Number(b.time) || Infinity);
+    });
+    return clean.slice(0, 100);
+}
+
+function mergeLeaderboardEntries(mode, remoteList, localList) {
+    const seen = new Set();
+    const merged = [];
+    for (const item of [...(remoteList || []), ...(localList || [])]) {
+        if (!item) continue;
+        const key = `${item.name || ''}|${mode === 'endless' ? item.wave : item.time}|${item.date || ''}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            merged.push(item);
+        }
+    }
+    return sortAndTrimLeaderboard(mode, merged);
+}
+
+async function addToLeaderboard(mode, entry) {
+    const data = { ...entry, name: playerName };
+    if (!leaderboard[mode]) leaderboard[mode] = [];
+    leaderboard[mode] = sortAndTrimLeaderboard(mode, [...leaderboard[mode], data]);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+
+    if (firebaseReady) {
+        try {
+            await db.ref('leaderboards/' + mode).push(data);
+            console.log('✅ Pushed to Firebase:', data);
+        } catch (e) {
+            console.warn('⚠️ Firebase push failed:', e);
+        }
+    }
+}
+
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[c]);
+}
+
+async function renderLeaderboard() {
+    const notice = document.getElementById('lb-offline-notice');
+    let anyFirebaseError = false;
+
+    for (const mode of ['easy','normal','hard','insane','endless']) {
+        const el = document.getElementById('lb-' + mode);
+        if (!el) continue;
+        el.innerHTML = '<p style="color:#888; text-align:center; padding:20px;">Đang tải...</p>';
+
+        let remoteList = [];
+        const localList = leaderboard[mode] || [];
+
+        if (firebaseReady) {
+            try {
+                const snap = await db.ref('leaderboards/' + mode).once('value');
+                snap.forEach(child => {
+                    const val = child.val();
+                    if (val) remoteList.push(val);
+                });
+            } catch (e) {
+                anyFirebaseError = true;
+                console.warn('⚠️ Firebase read failed (' + mode + '):', e);
+            }
+        }
+
+        const list = firebaseReady && !anyFirebaseError
+            ? sortAndTrimLeaderboard(mode, remoteList)
+            : mergeLeaderboardEntries(mode, remoteList, localList);
+
+        if (list.length === 0) {
+            el.innerHTML = '<p style="color:#666; text-align:center; padding:20px;">Chưa có ai. Hãy là người đầu tiên!</p>';
+            continue;
+        }
+
+        el.innerHTML = list.map((entry, i) => {
+            const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+            const rank = ['🥇','🥈','🥉'][i] || ('#' + (i + 1));
+            const val = mode === 'endless' ? `Wave ${entry.wave}` : `${entry.time}s`;
+            const date = entry.date ? new Date(entry.date).toLocaleDateString('vi-VN') : '';
+            const name = escapeHtml(entry.name || 'Ẩn danh');
+            return `<div class="lb-row ${cls}">
+                <span class="lb-rank">${rank}</span>
+                <span class="lb-name">${name}</span>
+                <span class="lb-score">${val}</span>
+                <span class="lb-date">${date}</span>
+            </div>`;
+        }).join('');
+    }
+
+    if (notice) {
+        if (!firebaseReady) {
+            notice.textContent = '⚠️ Chưa kết nối Firebase — chỉ hiển thị thành tích trên máy này.';
+            notice.style.display = 'block';
+        } else if (anyFirebaseError) {
+            notice.textContent = '⚠️ Không tải được BXH từ Firebase — đang hiển thị dữ liệu dự phòng trên máy.';
+            notice.style.display = 'block';
+        } else {
+            notice.style.display = 'none';
+        }
+    }
+}
+function switchTab(tabId, btn) {
+    document.querySelectorAll('#leaderboard-modal .tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#leaderboard-modal .tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+function showModal(id) {
+    if (id === 'leaderboard-modal') renderLeaderboard();
+    if (id === 'achievements-modal') renderAchievements();
+    document.getElementById(id).style.display = 'block';
+}
+function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+
+// Bind ô nhập tên
+function bindNameInput() {
+    const el = document.getElementById('player-name-input');
+    if (!el) return;
+    el.value = playerName;
+    el.addEventListener('input', () => {
+        const trimmed = el.value.trim().slice(0, 16);
+        const v = trimmed || 'Ẩn danh';
+        playerName = v;
+        localStorage.setItem('playerName', v);
+    });
+}
+
+// ============ PLAYING STATE CLASS ============
+function updatePlayingClass() {
+    const playing = !isPaused &&
+                    document.getElementById('menu').style.display === 'none' &&
+                    document.getElementById('game-over-ui').style.display !== 'block';
+    document.body.classList.toggle('playing', playing);
+}
+
+// ============ PAUSE / MENU ============
+function isInGame() {
+    return document.getElementById('menu').style.display === 'none' &&
+           document.getElementById('game-over-ui').style.display !== 'block' &&
+           document.getElementById('leaderboard-modal').style.display !== 'block' &&
+           document.getElementById('achievements-modal').style.display !== 'block';
+}
+function togglePause() {
+    if (!isInGame()) return;
+    if (!isPaused) pauseGame();
+    else if (document.getElementById('pause-ui').style.display === 'flex') resumeGame();
+}
+pauseBtn.addEventListener('click', togglePause);
 function pauseGame() {
+    if (isPaused) return;
     isPaused = true;
     pauseStart = Date.now();
     document.getElementById('pause-ui').style.display = 'flex';
+    pauseBtn.innerHTML = '▶ Tiếp tục';
     bgMusic.pause();
+    updatePlayingClass();
 }
-
-// Tiếp tục nhạc khi resume
 function resumeGame() {
     document.getElementById('pause-ui').style.display = 'none';
     if (pauseStart) { startTime += Date.now() - pauseStart; pauseStart = 0; }
     isPaused = false;
-    lastTime = 0;
-    if (musicEnabled) {
-        bgMusic.play().catch(e => console.log('Không thể phát lại nhạc'));
-    }
+    lastTime = 0; acc = 0;
+    inputLockUntil = performance.now() + 200;
+    pauseBtn.innerHTML = '⏸ Tạm dừng';
+    if (musicEnabled) bgMusic.play().catch(() => {});
+    updatePlayingClass();
 }
-
-// Dừng nhạc khi về menu
 function backToMenu() {
-    isPaused = true;
+    isPaused = true; pauseStart = 0;
     document.getElementById('game-over-ui').style.display = 'none';
     document.getElementById('pause-ui').style.display = 'none';
     document.getElementById('menu').style.display = 'block';
     document.getElementById('ui').style.display = 'none';
     document.querySelector('.controls').style.display = 'none';
+    pauseBtn.style.display = 'none';
     updateBestDisplay();
-    bgMusic.pause();
-    musicEnabled = false;
-    musicControl.innerHTML = '🔇 Đang tắt';
+    if (musicEnabled) bgMusic.play().catch(() => {});
+    updatePlayingClass();
 }
-
-// Khi chơi lại, reset nhạc về đầu và phát
-function retryGame() { 
+function retryGame() {
     bgMusic.currentTime = 0;
-    if (musicEnabled) {
-        bgMusic.play().catch(e => console.log('Không thể phát lại nhạc'));
-    }
-    startGame(currentMode); 
+    startGame(currentMode);
 }
 
-// --- Phần còn lại của game (giữ nguyên từ bản trước) ---
+// ============ GAME CORE ============
 const c = document.getElementById('game');
 const ctx = c.getContext('2d');
 const fogC = document.createElement('canvas');
 const fctx = fogC.getContext('2d');
 fogC.width = c.width; fogC.height = c.height;
+const SNIPER_VISION = 800;
+
+const isTouch = matchMedia('(pointer: coarse)').matches;
 
 const weapons = {
     pistol:  {cd:15, speed:13, dmg:2, color:'yellow', spread:0.02, name:'PISTOL'},
@@ -274,12 +771,9 @@ const weapons = {
     mine:    {cd:30, speed:0, dmg:0, color:'#888', size:12, name:'MINE'},
     overlord: {
         cd: 7, speed: 16, dmg: 1.8, color: '#ffaa00',
-        spread: 0.02, maxSpread: 0.20, minSpread: 0.05,
-        isOverlord: true,
-        spinUpSpeed: 0.3, minCd: 2,
-        damageDecay: 0.02, minDmg: 1.2,
-        speedIncrease: 0.1, maxSpeed: 18,
-        name: 'OVERLORD X'
+        spread: 0.02, maxSpread: 0.20, minSpread: 0.05, isOverlord: true,
+        spinUpSpeed: 0.3, minCd: 2, damageDecay: 0.02, minDmg: 1.2,
+        speedIncrease: 0.1, maxSpeed: 18, name: 'OVERLORD X'
     },
     sniper:  {cd:140, speed:25, dmg:45, color:'#fff', zoom:true, name:'SNIPER'},
     scatterburst: {
@@ -287,61 +781,33 @@ const weapons = {
         spread: 0.4, burstCount: 3, pelletsPerShot: 3,
         isScatterBurst: true, name: 'SCATTER BURST'
     },
-    // ██████ LASER BLINK – GỘP LASER VÀ BLINK (ĐÃ SỬA) ██████
     laserblink: {
-        cd: 1,
-        speed: 50,
-        dmg: 5,
-        color: '#ff66ff',
-        bulletSize: 6,
-        lifetime: 60,
-        swapRange: 600,
-        name: 'LASER BLINK'
+        cd: 1, speed: 50, dmg: 5, color: '#ff66ff',
+        bulletSize: 6, lifetime: 60, swapRange: 600, name: 'LASER BLINK'
     },
-    // ANCHOR GUN
     anchor: {
-        cd: 30,
-        speed: 50,
-        dmg: 0,
-        color: '#aa66cc',
-        duration: 240,
-        radius: 150,
-        pullStrength: 0.8,
-        slowFactor: 0.5,
-        maxAnchors: 2,
-        name: 'ANCHOR GUN'
+        cd: 30, speed: 50, dmg: 0, color: '#aa66cc',
+        duration: 240, radius: 150, pullStrength: 0.8,
+        slowFactor: 0.5, maxAnchors: 2, name: 'ANCHOR GUN'
     }
 };
+const weaponMap = ['pistol','rocket','plasma','mine','overlord','sniper','scatterburst','laserblink','anchor'];
 
-const weaponMap = [
-    'pistol',       // 0
-    'rocket',       // 1
-    'plasma',       // 2
-    'mine',         // 3
-    'overlord',     // 4
-    'sniper',       // 5
-    'scatterburst', // 6
-    'laserblink',   // 7
-    'anchor'        // 8
-];
-
-let p1, boss, walls, cam, keys={}, isMouseDown=false, isRightMouseDown=false, mouse={x:0,y:0};
-let currentMode='normal', isPaused=true, startTime=0, pauseStart=0;
-let fireDuration = 0;
-let bossHitEffect = 0;
-let lastTime = 0;
-let damagePopups = [];
-let explosionEffects = [];
-let mines = [];
-let anchors = [];
-
-// Biến lưu đạn laser hiện tại (chỉ 1 viên)
-let laserBullet = null;
-
+let p1, boss, walls, keys = {}, isMouseDown = false;
+let mobileKeys = { w:false, a:false, s:false, d:false };
+let mouse = {x: 500, y: 300};
+let currentMode = 'normal', isPaused = true, startTime = 0, pauseStart = 0;
+let fireDuration = 0, bossHitEffect = 0, lastTime = 0, acc = 0;
+let damagePopups = [], explosionEffects = [], mines = [], anchors = [], laserBullet = null;
+let inputLockUntil = 0;
 let bossPhase = 0;
-const bossNames = ['BẠO CHÚA','TỬ THẦN','HỦY DIỆT','ÁC MỘNG'];
 
-// Định nghĩa các phase cho từng độ khó
+let endlessWave = 1;
+let endlessActive = false;
+let endlessNoHit = true;
+
+const bossNames = ['BẠO CHÚA','TỬ THẦN','HỦY DIỆT','ÁC MỘNG','VÔ TẬN'];
+
 const phaseDefinitions = {
     easy: [
         { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 1 },
@@ -350,85 +816,67 @@ const phaseDefinitions = {
     normal: [
         { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 3 },
         { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
-        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] }
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink','swap'] }
     ],
     hard: [
         { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 6 },
         { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
-        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] },
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink','swap'] },
         { threshold: 0.2, name: 'PHASE 4', heal: 0.9, transformIll: true, minionHP: 10 }
     ],
     insane: [
         { threshold: 1.0, name: 'PHASE 1', dmg: 1, speedMult: 1, illCount: 12 },
         { threshold: 0.3, name: 'PHASE 2', heal: 2, illMult: 2, dmg: 3, speedMult: 1.5, illDuration: 240 },
-        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink', 'swap'] },
+        { threshold: 0.25, name: 'PHASE 3', heal: 1.0, skills: ['blink','swap'] },
         { threshold: 0.2, name: 'PHASE 4', heal: 0.9, transformIll: true, minionHP: 10 },
-        { threshold: 0.15, name: 'PHASE 5', heal: 0.85, transformIll: true, minionHP: 10, skills: ['copyBullet', 'controlBullet'] }
+        { threshold: 0.15, name: 'PHASE 5', heal: 0.85, transformIll: true, minionHP: 10, skills: ['copyBullet','controlBullet'] }
+    ],
+    endless: [
+        { threshold: 1.0, name: 'WAVE', dmg: 1, speedMult: 1, illCount: 3 },
+        { threshold: 0.3, name: 'WAVE+', illMult: 2, dmg: 2, speedMult: 1.3 },
+        { threshold: 0.15, name: 'WAVE++', skills: ['blink','swap'] }
     ]
 };
 
-// Cấu hình cơ bản cho mỗi độ khó
 const cfg = {
     easy:   {hp:80, moveSpeed:1, ill:1, vis:550, bossName:bossNames[0]},
     normal: {hp:160, moveSpeed:1.8, ill:3, vis:450, bossName:bossNames[1]},
     hard:   {hp:450, moveSpeed:2.5, ill:6, vis:350, bossName:bossNames[2]},
-    insane: {hp:1200, moveSpeed:3.5, ill:12, vis:260, bossName:bossNames[3]}
+    insane: {hp:1200, moveSpeed:3.5, ill:12, vis:260, bossName:bossNames[3]},
+    endless:{hp:100, moveSpeed:1.5, ill:3, vis:450, bossName:bossNames[4]}
 };
 
 function getPhaseFromHP(hpPercent, mode) {
     const phases = phaseDefinitions[mode];
-    for (let i = phases.length - 1; i >= 0; i--) {
-        if (hpPercent <= phases[i].threshold) {
-            return i;
-        }
-    }
+    for (let i = phases.length - 1; i >= 0; i--) if (hpPercent <= phases[i].threshold) return i;
     return 0;
 }
-
 function applyPhaseEffects(phaseIndex) {
-    const phases = phaseDefinitions[currentMode];
-    const phase = phases[phaseIndex];
+    const phase = phaseDefinitions[currentMode][phaseIndex];
     if (!phase) return;
-
     document.getElementById('boss-phase').innerText = phase.name;
-
     if (phase.heal) {
-        if (phase.heal === 2) {
-            boss.hp = boss.maxHp * 2;
-            boss.maxHp = boss.maxHp * 2;
-        } else if (phase.heal === 1.0) {
-            boss.hp = boss.maxHp;
-        } else if (phase.heal === 0.9) {
-            boss.hp = boss.maxHp * 0.9;
-        } else if (phase.heal === 0.85) {
-            boss.hp = boss.maxHp * 0.85;
-        }
+        if (phase.heal === 2) { boss.hp = boss.maxHp * 2; boss.maxHp *= 2; }
+        else if (phase.heal === 1.0) boss.hp = boss.maxHp;
+        else if (phase.heal === 0.9) boss.hp = boss.maxHp * 0.9;
+        else if (phase.heal === 0.85) boss.hp = boss.maxHp * 0.85;
     }
-
-    if (phase.dmg) boss.damage = phase.dmg;
-    if (phase.speedMult) boss.speedMult = phase.speedMult;
+    if (phase.dmg) boss.damage = Math.max(boss.damage, phase.dmg);
+    if (phase.speedMult) boss.speedMult = Math.max(boss.speedMult, phase.speedMult);
     if (phase.illMult) boss.illMult = phase.illMult;
     if (phase.illDuration) boss.illDuration = phase.illDuration;
-
-    if (phase.skills) {
-        phase.skills.forEach(skill => {
-            boss.skills[skill] = true;
-            if (skill === 'blink') boss.blinkCd = 0;
-            if (skill === 'swap') boss.swapCd = 0;
-            if (skill === 'copyBullet') boss.copyCd = 0;
-            if (skill === 'controlBullet') boss.controlCd = 0;
-        });
-    }
-
+    if (phase.skills) phase.skills.forEach(s => {
+        boss.skills[s] = true;
+        if (s === 'blink') boss.blinkCd = 0;
+        if (s === 'swap') boss.swapCd = 0;
+        if (s === 'copyBullet') boss.copyCd = 0;
+        if (s === 'controlBullet') boss.controlCd = 0;
+    });
     if (phase.transformIll) {
         boss.ill.forEach(ill => {
-            let minion = {
-                x: ill.x, y: ill.y, w: ill.w, h: ill.h,
-                hp: phase.minionHP,
-                color: '#ff00ff'
-            };
-            pushOutOfWalls(minion);
-            boss.minions.push(minion);
+            let m = { x:ill.x, y:ill.y, w:ill.w, h:ill.h, hp: phase.minionHP, color:'#ff00ff' };
+            pushOutOfWalls(m);
+            boss.minions.push(m);
         });
         boss.ill = [];
     }
@@ -437,196 +885,171 @@ function applyPhaseEffects(phaseIndex) {
 function updateBestDisplay() {
     ['easy','normal','hard','insane'].forEach(m => {
         const best = localStorage.getItem('best_'+m);
-        document.getElementById('best-'+m).innerText = best ? `(Kỷ lục: ${best}s)` : '';
+        document.getElementById('best-'+m).innerText = best ? `(${best}s)` : '';
     });
+    const bestEndless = localStorage.getItem('best_endless');
+    document.getElementById('best-endless').innerText = bestEndless ? `(Wave ${bestEndless})` : '';
 }
 
-function createDamagePopup(x, y, dmg, col='#ff4444') {
+function createDamagePopup(x, y, dmg, col = '#ff4444') {
     damagePopups.push({
-        x: x + (Math.random()-0.5)*30,
-        y: y,
-        text: Math.floor(dmg).toString(),
-        color: col,
-        life: 60,
-        vy: -1
+        x: x + (Math.random() - 0.5) * 30, y: y,
+        text: typeof dmg === 'number' ? String(Math.round(dmg)) : String(dmg),
+        color: col, life: 60, vy: -1
     });
 }
-
 function createExplosionEffect(x, y) {
     explosionEffects.push({ x, y, radius: 24, life: 16 });
 }
-
 function explodeMine(mine) {
-    const angleStep = (Math.PI * 2) / 12;
     for (let i = 0; i < 12; i++) {
-        const angle = i * angleStep;
+        const a = i * (Math.PI * 2) / 12;
         p1.bullets.push({
-            x: mine.x,
-            y: mine.y,
-            vx: Math.cos(angle) * 10,
-            vy: Math.sin(angle) * 10,
-            dmg: 8,
-            color: '#ffaa00',
-            size: 5,
-            lifetime: 60,
-            homing: false,
-            pierce: false
+            x: mine.x, y: mine.y,
+            vx: Math.cos(a)*10, vy: Math.sin(a)*10,
+            dmg: 8, color: '#ffaa00', size: 5, lifetime: 60,
+            homing: false, pierce: false,
+            _weapon: 'mine'
         });
     }
     createExplosionEffect(mine.x, mine.y);
+    triggerShake(6, 10);
+    sfx('boom');
 }
-
-function createAnchor(x, y, duration, radius, pullStrength, slowFactor) {
-    if (anchors.length >= weapons.anchor.maxAnchors) {
-        anchors.shift();
-    }
-    anchors.push({
-        x, y,
-        life: duration,
-        radius,
-        pullStrength,
-        slowFactor,
-        color: '#aa66cc'
-    });
+function createAnchor(x, y, dur, rad, pull, slow) {
+    if (anchors.length >= weapons.anchor.maxAnchors) anchors.shift();
+    anchors.push({ x, y, life: dur, radius: rad, pullStrength: pull, slowFactor: slow, color: '#aa66cc' });
 }
-
-function pointInWall(x, y, wall) {
-    return x > wall.x && x < wall.x + wall.w && y > wall.y && y < wall.y + wall.h;
-}
-
+function pointInWall(x, y, w) { return x > w.x && x < w.x + w.w && y > w.y && y < w.y + w.h; }
 function checkHit(r1, r2) {
     return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
 }
-
-function pushOutOfWalls(entity) {
+function pushOutOfWalls(e) {
     let maxIter = 10;
     while (maxIter-- > 0) {
         let collided = false;
         for (let w of walls) {
-            if (checkHit(entity, w)) {
+            if (checkHit(e, w)) {
                 collided = true;
-                let overlapLeft = entity.x + entity.w - w.x;
-                let overlapRight = w.x + w.w - entity.x;
-                let overlapTop = entity.y + entity.h - w.y;
-                let overlapBottom = w.y + w.h - entity.y;
-                let minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
-                if (minOverlap === overlapLeft) {
-                    entity.x = w.x - entity.w;
-                } else if (minOverlap === overlapRight) {
-                    entity.x = w.x + w.w;
-                } else if (minOverlap === overlapTop) {
-                    entity.y = w.y - entity.h;
-                } else {
-                    entity.y = w.y + w.h;
-                }
+                let oL = e.x + e.w - w.x, oR = w.x + w.w - e.x;
+                let oT = e.y + e.h - w.y, oB = w.y + w.h - e.y;
+                let m = Math.min(oL, oR, oT, oB);
+                if (m === oL) e.x = w.x - e.w;
+                else if (m === oR) e.x = w.x + w.w;
+                else if (m === oT) e.y = w.y - e.h;
+                else e.y = w.y + w.h;
                 break;
             }
         }
         if (!collided) break;
     }
 }
-
 function findSafePosition(entity, maxAttempts = 20) {
-    let attempts = 0;
-    let originalX = entity.x, originalY = entity.y;
-    while (attempts < maxAttempts) {
-        let collides = false;
-        for (let w of walls) {
-            if (checkHit(entity, w)) {
-                collides = true;
-                break;
-            }
-        }
-        if (!collides) return true;
+    let a = 0, oX = entity.x, oY = entity.y;
+    while (a < maxAttempts) {
+        if (!walls.some(w => checkHit(entity, w))) return true;
         entity.x = Math.random() * (1000 - entity.w - 60) + 30;
         entity.y = Math.random() * (600 - entity.h - 60) + 30;
-        attempts++;
+        a++;
     }
-    entity.x = originalX;
-    entity.y = originalY;
+    entity.x = oX; entity.y = oY;
     pushOutOfWalls(entity);
     return false;
 }
 
 function updateUIDisplay() {
     const p1HP = Math.max(0, Math.floor(p1.hp));
-    const p1Max = p1.maxHp;
-    const p1Percent = Math.floor((p1HP/p1Max)*100);
-    document.getElementById('p1-hp-numbers').innerText = `${p1HP}/${p1Max}`;
-    document.getElementById('p1-hp-percent').innerText = p1Percent + '%';
-    document.getElementById('p1-fill').style.width = p1Percent + '%';
-    if (p1Percent > 50) document.getElementById('p1-fill').style.background = '#2ecc71';
-    else if (p1Percent > 25) document.getElementById('p1-fill').style.background = '#f39c12';
-    else document.getElementById('p1-fill').style.background = '#e74c3c';
+    const p1P = Math.floor((p1HP/p1.maxHp)*100);
+    document.getElementById('p1-hp-numbers').innerText = `${p1HP}/${p1.maxHp}`;
+    document.getElementById('p1-hp-percent').innerText = p1P + '%';
+    document.getElementById('p1-fill').style.width = p1P + '%';
+    document.getElementById('p1-fill').style.background =
+        p1P > 50 ? '#2ecc71' : p1P > 25 ? '#f39c12' : '#e74c3c';
 
-    const bossHP = Math.max(0, Math.floor(boss.hp));
-    const bossMax = boss.maxHp;
-    const bossPercent = Math.floor((bossHP/bossMax)*100);
-    document.getElementById('boss-hp-numbers').innerText = `${bossHP}/${bossMax}`;
-    document.getElementById('boss-hp-percent').innerText = bossPercent + '%';
-    document.getElementById('boss-fill').style.width = bossPercent + '%';
+    const bHP = Math.max(0, Math.floor(boss.hp));
+    const bP = Math.floor((bHP/boss.maxHp)*100);
+    document.getElementById('boss-hp-numbers').innerText = `${bHP}/${boss.maxHp}`;
+    document.getElementById('boss-hp-percent').innerText = bP + '%';
+    document.getElementById('boss-fill').style.width = bP + '%';
 
-    let newPhase = getPhaseFromHP(bossHP / bossMax, currentMode);
-    if (newPhase > bossPhase) {
-        bossPhase = newPhase;
-        applyPhaseEffects(newPhase);
-    }
+    const newPhase = getPhaseFromHP(bHP / boss.maxHp, currentMode);
+    if (newPhase > bossPhase) { bossPhase++; applyPhaseEffects(bossPhase); }
 
     document.getElementById('boss-name').innerText = cfg[currentMode].bossName;
-
     document.getElementById('mine-count').innerText = `MÌN: ${mines.length}`;
     document.getElementById('anchor-count').innerText = `NEO: ${anchors.length}/${weapons.anchor.maxAnchors}`;
-    
+    const lb = document.getElementById('laserblink-status');
     if (laserBullet && laserBullet.lifetime > 0) {
-        document.getElementById('laserblink-status').innerText = `LASER: CÓ (${Math.floor(laserBullet.lifetime/60)}s)`;
-        document.getElementById('laserblink-status').style.color = '#ff66ff';
+        lb.innerText = `LASER: CÓ (${Math.ceil(laserBullet.lifetime/60)}s)`;
+        lb.style.color = '#ff66ff';
+    } else { lb.innerText = `LASER: KHÔNG`; lb.style.color = '#888'; }
+
+    if (currentMode === 'endless') {
+        const wd = document.getElementById('wave-display');
+        wd.style.display = 'block';
+        wd.innerText = `WAVE ${endlessWave}`;
     } else {
-        document.getElementById('laserblink-status').innerText = `LASER: KHÔNG`;
-        document.getElementById('laserblink-status').style.color = '#888';
+        document.getElementById('wave-display').style.display = 'none';
     }
+}
+
+function spawnBossForWave(wave) {
+    const baseHp = 100;
+    const hpMult = Math.pow(1.2, wave - 1);
+    const hp = Math.floor(baseHp * hpMult);
+    boss.hp = hp; boss.maxHp = hp;
+    boss.x = 900; boss.y = 300;
+    boss.bullets = []; boss.minions = []; boss.ill = [];
+    boss.skills = {}; boss.blinkCd = 0; boss.swapCd = 0;
+    boss.copyCd = 0; boss.controlCd = 0;
+    boss.damage = 1 + Math.floor(wave / 3);
+    boss.speedMult = 1 + (wave - 1) * 0.1;
+    boss.slowTimer = 0; boss.slowFactor = 1;
+    boss.shootCd = 0; boss.illCd = 60;
+    bossHitEffect = 0;
+    bossPhase = 0;
+    boss.lastHit = null;
+    if (wave >= 3) boss.skills.blink = true;
+    if (wave >= 5) boss.skills.swap = true;
+    if (wave >= 7) boss.skills.copyBullet = true;
+    if (wave >= 9) boss.skills.controlBullet = true;
+    document.getElementById('boss-phase').innerText = '';
+    sfx('wave');
+    createDamagePopup(500, 300, `WAVE ${wave}`, '#ff66ff');
 }
 
 function initGameVars(mode) {
     const d = cfg[mode];
     p1 = {
         x:100, y:300, w:30, h:30, hp:20, maxHp:20,
-        weapon:'pistol', cd:0, bullets:[], vision:d.vis
+        weapon:'pistol', cd:0, bullets:[], vision:d.vis, invuln: 0
     };
     boss = {
         x:900, y:300, w:50, h:50, hp:d.hp, maxHp:d.hp,
-        bullets:[], cd:0, illCd:0, ill:[],
-        slowTimer: 0,
-        slowFactor: 1,
-        damage: 1,
-        speedMult: 1,
-        illMult: 1,
-        illDuration: 120,
-        skills: {},
-        blinkCd: 0,
-        swapCd: 0,
-        copyCd: 0,
-        controlCd: 0,
-        minions: [],
-        shootCd: 0
+        bullets:[], illCd:0, ill:[],
+        slowTimer: 0, slowFactor: 1,
+        damage: 1, speedMult: 1, illMult: 1, illDuration: 200,
+        skills: {}, blinkCd: 0, swapCd: 0, copyCd: 0, controlCd: 0,
+        minions: [], shootCd: 0,
+        lastHit: null
     };
     walls = [
-        {x:0, y:0, w:1000, h:30},
-        {x:0, y:570, w:1000, h:30},
-        {x:0, y:0, w:30, h:600},
-        {x:970, y:0, w:30, h:600},
+        {x:0, y:0, w:1000, h:30}, {x:0, y:570, w:1000, h:30},
+        {x:0, y:0, w:30, h:600}, {x:970, y:0, w:30, h:600},
         {x:300, y:200, w:30, h:200},
         {x:600, y:100, w:30, h:150},
         {x:600, y:350, w:30, h:150}
     ];
-    cam = {x:0,y:0};
-    fireDuration = 0;
-    bossHitEffect = 0;
-    damagePopups = [];
-    explosionEffects = [];
-    mines = [];
-    anchors = [];
-    laserBullet = null;
-    bossPhase = 0;
+    fireDuration = 0; bossHitEffect = 0;
+    damagePopups = []; explosionEffects = [];
+    mines = []; anchors = []; laserBullet = null;
+    bossPhase = 0; isMouseDown = false;
+    endlessWave = 1;
+    endlessActive = (mode === 'endless');
+    endlessNoHit = true;
+    screenShake.intensity = 0; screenShake.duration = 0;
+    document.getElementById('wp-display').innerText = 'VŨ KHÍ: ' + weapons.pistol.name;
+    document.getElementById('boss-phase').innerText = '';
 }
 
 function startGame(mode) {
@@ -634,388 +1057,431 @@ function startGame(mode) {
     document.getElementById('menu').style.display = 'none';
     document.getElementById('game-over-ui').style.display = 'none';
     document.getElementById('pause-ui').style.display = 'none';
+    document.getElementById('leaderboard-modal').style.display = 'none';
+    document.getElementById('achievements-modal').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     document.querySelector('.controls').style.display = 'block';
+    pauseBtn.style.display = 'block';
+    pauseBtn.innerHTML = '⏸ Tạm dừng';
     initGameVars(mode);
     startTime = Date.now();
+    pauseStart = 0;
     isPaused = false;
-    lastTime = 0;
+    lastTime = 0; acc = 0;
+    inputLockUntil = performance.now() + 300;
     updateUIDisplay();
-
-    // Phát nhạc nếu đang bật
-    if (musicEnabled) {
-        bgMusic.play().catch(e => console.log('Không thể phát nhạc'));
-    }
+    updatePlayingClass();
+    if (musicEnabled) bgMusic.play().catch(() => {});
 }
 
-// Đã định nghĩa retryGame, backToMenu, resumeGame ở trên
-
 function endGame(win) {
+    if (isPaused) return;
     isPaused = true;
+    pauseBtn.style.display = 'none';
+    updatePlayingClass();
     const finalTime = ((Date.now() - startTime)/1000).toFixed(2);
-    document.getElementById('game-over-ui').style.display = 'block';
-    const txt = document.getElementById('result-text');
-    txt.innerText = win ? 'CHIẾN THẮNG!' : 'THẤT BẠI!';
-    txt.style.color = win ? '#2ecc71' : '#e74c3c';
-    if (win) {
-        const best = localStorage.getItem('best_'+currentMode);
-        if (!best || parseFloat(finalTime) < parseFloat(best))
-            localStorage.setItem('best_'+currentMode, finalTime);
-    }
-    document.getElementById('result-detail').innerHTML = 
-        `Độ khó: <b style="color:#ffd700">${currentMode.toUpperCase()}</b><br>` +
-        `Thời gian: <b>${finalTime}s</b><br>` +
-        `Máu boss: <b style="color:#e74c3c">${Math.max(0,Math.floor(boss.hp))}/${boss.maxHp}</b><br>` +
-        `Máu bạn: <b style="color:#2ecc71">${Math.max(0,Math.floor(p1.hp))}/20</b>`;
+    const detail = document.getElementById('result-detail');
 
-    // Tạm dừng nhạc khi game over
+    if (endlessActive) {
+        const wave = endlessWave;
+        document.getElementById('result-text').innerText = `WAVE ${wave}`;
+        document.getElementById('result-text').style.color = '#ff66ff';
+        detail.innerHTML =
+            `Chế độ: <b style="color:#ff66ff">VÔ TẬN</b><br>` +
+            `Số wave đạt được: <b style="color:#ffd700">${wave}</b><br>` +
+            `Thời gian: <b>${finalTime}s</b>`;
+        addToLeaderboard('endless', { wave, date: Date.now() });
+        const bestEndless = localStorage.getItem('best_endless');
+        if (!bestEndless || wave > parseInt(bestEndless)) localStorage.setItem('best_endless', wave);
+    } else {
+        document.getElementById('result-text').innerText = win ? 'CHIẾN THẮNG!' : 'THẤT BẠI!';
+        document.getElementById('result-text').style.color = win ? '#2ecc71' : '#e74c3c';
+        detail.innerHTML =
+            `Độ khó: <b style="color:#ffd700">${currentMode.toUpperCase()}</b><br>` +
+            `Thời gian: <b>${finalTime}s</b><br>` +
+            `Máu boss: <b style="color:#e74c3c">${Math.max(0,Math.floor(boss.hp))}/${boss.maxHp}</b><br>` +
+            `Máu bạn: <b style="color:#2ecc71">${Math.max(0,Math.floor(p1.hp))}/20</b>`;
+
+        if (win) {
+            const best = localStorage.getItem('best_'+currentMode);
+            if (!best || parseFloat(finalTime) < parseFloat(best))
+                localStorage.setItem('best_'+currentMode, finalTime);
+            addToLeaderboard(currentMode, { time: parseFloat(finalTime), date: Date.now() });
+            unlockAchievement('firstWin');
+            if (parseFloat(finalTime) < 30) unlockAchievement('speedrun');
+            if (p1.hp >= p1.maxHp) unlockAchievement('noDamage');
+            if (currentMode === 'insane') unlockAchievement('insaneWin');
+            const modes = ['easy','normal','hard','insane'];
+            if (modes.every(m => localStorage.getItem('best_'+m))) unlockAchievement('allModes');
+            if (boss.lastHit === 'sniper') unlockAchievement('sniperKill');
+            if (boss.lastHit === 'laserblink') unlockAchievement('laserKill');
+            if (boss.lastHit === 'mine') unlockAchievement('mineKill');
+        }
+    }
+    document.getElementById('game-over-ui').style.display = 'block';
     bgMusic.pause();
 }
 
+function switchWeapon(idx) {
+    const wp = weaponMap[idx];
+    if (!wp || wp === p1.weapon) return;
+    p1.weapon = wp; p1.cd = 0; fireDuration = 0;
+    p1.vision = weapons[wp].zoom ? SNIPER_VISION : cfg[currentMode].vis;
+    document.getElementById('wp-display').innerText = `VŨ KHÍ: ${weapons[wp].name}`;
+}
+
+// ============ INPUT ============
 addEventListener('keydown', e => {
     const key = e.key.toLowerCase();
-    if (key === 'p') {
-        if (!isPaused && document.getElementById('menu').style.display==='none' && 
-            document.getElementById('game-over-ui').style.display==='none') {
-            pauseGame(); // dùng hàm pauseGame đã định nghĩa
-        } else if (isPaused && document.getElementById('pause-ui').style.display==='flex') {
-            resumeGame();
-        }
-        return;
-    }
+    if (key === 'p') { togglePause(); return; }
     if (key === 'r' && !isPaused) { retryGame(); return; }
     if (key === 'escape') {
+        for (const id of ['leaderboard-modal', 'achievements-modal']) {
+            if (document.getElementById(id).style.display === 'block') { hideModal(id); return; }
+        }
         if (document.getElementById('pause-ui').style.display === 'flex') resumeGame();
-        else if (!isPaused) { pauseGame(); }
+        else if (!isPaused) pauseGame();
         else backToMenu();
         return;
     }
-    if (e.key >= '0' && e.key <= '8') {
-        const idx = parseInt(e.key);
-        if (idx < weaponMap.length) {
-            const wp = weaponMap[idx];
-            if (wp) {
-                p1.weapon = wp;
-                document.getElementById('wp-display').innerText = `VŨ KHÍ: ${weapons[wp].name}`;
-                p1.vision = weapons[wp].zoom ? 250 : cfg[currentMode].vis;
-                fireDuration = 0;
-            }
-        }
-    }
+    if (/^[0-8]$/.test(e.key) && !isPaused) switchWeapon(parseInt(e.key));
     keys[key] = true;
 });
 addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
-
-c.addEventListener('mousemove', e => {
-    const rect = c.getBoundingClientRect();
-    mouse.x = e.clientX - rect.left;
-    mouse.y = e.clientY - rect.top;
+addEventListener('blur', () => {
+    keys = {}; mobileKeys = { w:false, a:false, s:false, d:false };
+    isMouseDown = false;
+    if (!isPaused && isInGame()) pauseGame();
 });
+
+addEventListener('mousemove', e => {
+    const rect = c.getBoundingClientRect();
+    mouse.x = (e.clientX - rect.left - c.clientLeft) * (c.width / c.clientWidth);
+    mouse.y = (e.clientY - rect.top - c.clientTop) * (c.height / c.clientHeight);
+});
+
+function doLeftClick() {
+    if (p1.weapon === 'mine' && p1.cd <= 0) {
+        const wx = p1.x + p1.w/2, wy = p1.y + p1.h/2;
+        mines.push({ x: wx, y: wy, w: weapons.mine.size, h: weapons.mine.size, color: weapons.mine.color });
+        p1.cd = weapons.mine.cd;
+        createDamagePopup(wx, wy - 20, 'ĐẶT MÌN', '#ffaa00');
+        sfx('hit');
+        updateUIDisplay();
+    } else {
+        fire(p1);
+    }
+}
+function doRightClick() {
+    if (p1.weapon === 'laserblink' && laserBullet && laserBullet.lifetime > 0) {
+        const dist = Math.hypot(laserBullet.x - p1.x, laserBullet.y - p1.y);
+        if (dist <= weapons.laserblink.swapRange) {
+            const lx = laserBullet.x, ly = laserBullet.y;
+            p1.x = Math.max(30, Math.min(970 - p1.w, lx - p1.w/2));
+            p1.y = Math.max(30, Math.min(570 - p1.h, ly - p1.h/2));
+            pushOutOfWalls(p1);
+            const i = p1.bullets.indexOf(laserBullet);
+            if (i !== -1) p1.bullets.splice(i, 1);
+            laserBullet = null;
+            createExplosionEffect(lx, ly);
+            createDamagePopup(lx, ly - 20, 'BLINK', '#ff66ff');
+            triggerShake(3, 8);
+            sfx('blink');
+            updateUIDisplay();
+        }
+    } else if (mines.length > 0) {
+        mines.forEach(m => explodeMine(m));
+        mines = [];
+        updateUIDisplay();
+    }
+}
 
 addEventListener('mousedown', e => {
     if (isPaused) return;
-    
-    if (e.button === 2) {
-        isRightMouseDown = true;
-        e.preventDefault();
-        
-        // Ưu tiên: nếu đang dùng LASER BLINK và có laser, dịch chuyển
-        if (p1.weapon === 'laserblink' && laserBullet && laserBullet.lifetime > 0) {
-            const dist = Math.hypot(laserBullet.x - p1.x, laserBullet.y - p1.y);
-            if (dist <= weapons.laserblink.swapRange) {
-                // Dịch chuyển đến vị trí laser
-                p1.x = laserBullet.x - p1.w/2;
-                p1.y = laserBullet.y - p1.h/2;
-                p1.x = Math.max(30, Math.min(970 - p1.w, p1.x));
-                p1.y = Math.max(30, Math.min(570 - p1.h, p1.y));
-                // Đẩy player ra nếu bị kẹt tường
-                pushOutOfWalls(p1);
-                // Xóa laser
-                const index = p1.bullets.indexOf(laserBullet);
-                if (index !== -1) p1.bullets.splice(index, 1);
-                laserBullet = null;
-                createExplosionEffect(laserBullet?.x || p1.x, laserBullet?.y || p1.y);
-                createDamagePopup(laserBullet?.x || p1.x, laserBullet?.y || p1.y - 20, 'BLINK', '#ff66ff');
-                updateUIDisplay();
-            }
-        }
-        else if (mines.length > 0) {
-            mines.forEach(mine => explodeMine(mine));
-            mines = [];
-            updateUIDisplay();
-        }
-        return;
-    }
-    
-    if (e.button === 0) {
-        isMouseDown = true;
-        
-        if (p1.weapon === 'mine' && p1.cd <= 0) {
-            let worldX = p1.x + p1.w/2;
-            let worldY = p1.y + p1.h/2;
-            mines.push({
-                x: worldX,
-                y: worldY,
-                w: weapons.mine.size,
-                h: weapons.mine.size,
-                color: weapons.mine.color
-            });
-            p1.cd = weapons.mine.cd;
-            createDamagePopup(worldX, worldY - 20, 'ĐẶT MÌN', '#ffaa00');
-            updateUIDisplay();
-        }
-        else {
-            fire(p1); // bắn ngay lập tức cho các vũ khí khác
-        }
-    }
-});
+    if (performance.now() < inputLockUntil) return;
+    if (e.target.closest && (e.target.closest('#hud-buttons') || e.target.closest('#mobile-controls'))) return;
 
+    if (e.button === 2) { e.preventDefault(); doRightClick(); return; }
+    if (e.button === 0) { isMouseDown = true; doLeftClick(); }
+});
 addEventListener('mouseup', e => {
     if (e.button === 0) { isMouseDown = false; fireDuration = 0; }
-    else if (e.button === 2) { isRightMouseDown = false; }
 });
+addEventListener('contextmenu', e => { if (isInGame()) e.preventDefault(); });
 
-c.addEventListener('contextmenu', e => e.preventDefault());
+// ============ MOBILE TOUCH CONTROLS ============
+const joystickZone = document.getElementById('joystick-zone');
+const joystickKnob = document.getElementById('joystick-knob');
+let joystickTouchId = null;
+let joystickCenterX = 0, joystickCenterY = 0;
+const JOY_MAX = 50;
+
+function updateJoystick(touch) {
+    const dx = touch.clientX - joystickCenterX;
+    const dy = touch.clientY - joystickCenterY;
+    const dist = Math.min(JOY_MAX, Math.hypot(dx, dy));
+    const angle = Math.atan2(dy, dx);
+    const kx = Math.cos(angle) * dist;
+    const ky = Math.sin(angle) * dist;
+    joystickKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+    const nx = dx / JOY_MAX, ny = dy / JOY_MAX;
+    mobileKeys.a = nx < -0.35;
+    mobileKeys.d = nx > 0.35;
+    mobileKeys.w = ny < -0.35;
+    mobileKeys.s = ny > 0.35;
+}
+function resetJoystick() {
+    joystickKnob.style.transform = 'translate(0, 0)';
+    mobileKeys = { w:false, a:false, s:false, d:false };
+    joystickTouchId = null;
+}
+
+joystickZone.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (joystickTouchId !== null) return;
+    const t = e.changedTouches[0];
+    joystickTouchId = t.identifier;
+    const rect = joystickZone.getBoundingClientRect();
+    joystickCenterX = rect.left + rect.width / 2;
+    joystickCenterY = rect.top + rect.height / 2;
+    updateJoystick(t);
+}, { passive: false });
+
+joystickZone.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+        if (t.identifier === joystickTouchId) updateJoystick(t);
+    }
+}, { passive: false });
+
+function handleTouchEnd(e) {
+    for (const t of e.changedTouches) {
+        if (t.identifier === joystickTouchId) resetJoystick();
+    }
+}
+joystickZone.addEventListener('touchend', handleTouchEnd);
+joystickZone.addEventListener('touchcancel', handleTouchEnd);
+
+const btnFire = document.getElementById('btn-fire');
+const btnRight = document.getElementById('btn-right');
+const btnWeapon = document.getElementById('btn-weapon');
+
+btnFire.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (isPaused || performance.now() < inputLockUntil) return;
+    isMouseDown = true;
+    doLeftClick();
+}, { passive: false });
+btnFire.addEventListener('touchend', e => {
+    e.preventDefault();
+    isMouseDown = false;
+    fireDuration = 0;
+}, { passive: false });
+btnFire.addEventListener('touchcancel', e => {
+    e.preventDefault();
+    isMouseDown = false;
+    fireDuration = 0;
+}, { passive: false });
+
+btnRight.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (isPaused || performance.now() < inputLockUntil) return;
+    doRightClick();
+}, { passive: false });
+
+btnWeapon.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (isPaused) return;
+    const cur = weaponMap.indexOf(p1.weapon);
+    const next = (cur + 1) % weaponMap.length;
+    switchWeapon(next);
+}, { passive: false });
+
+// ============ AIM / FIRE ============
+function aimAngle(ent) {
+    let tx = mouse.x, ty = mouse.y;
+    if (isTouch && ent === p1) {
+        let best = boss, bd = Infinity;
+        [boss, ...boss.minions].forEach(t => {
+            if (t.hp <= 0) return;
+            const d = Math.hypot(t.x - ent.x, t.y - ent.y);
+            if (d < bd) { bd = d; best = t; }
+        });
+        tx = best.x + best.w/2;
+        ty = best.y + best.h/2;
+    }
+    return Math.atan2(ty - (ent.y + ent.h/2), tx - (ent.x + ent.w/2));
+}
 
 function fire(ent) {
     const w = weapons[ent.weapon];
-    if (ent.cd > 0) return;
-    if (ent.weapon === 'mine') return;
+    if (ent.cd > 0 || ent.weapon === 'mine') return;
 
-    // ██████ LASER BLINK – BẮN LASER, XÓA LASER CŨ ██████
     if (ent.weapon === 'laserblink') {
         ent.cd = w.cd;
-        // Xóa laser cũ nếu có
         if (laserBullet) {
-            const oldIndex = ent.bullets.indexOf(laserBullet);
-            if (oldIndex !== -1) ent.bullets.splice(oldIndex, 1);
+            const i = ent.bullets.indexOf(laserBullet);
+            if (i !== -1) ent.bullets.splice(i, 1);
             laserBullet = null;
         }
-        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
-        const bullet = {
-            x: ent.x + 15,
-            y: ent.y + 15,
-            vx: Math.cos(angle) * w.speed,
-            vy: Math.sin(angle) * w.speed,
-            dmg: w.dmg,
-            color: w.color,
-            size: w.bulletSize,
-            lifetime: w.lifetime,
-            isLaserBlink: true
+        const a = aimAngle(ent);
+        const b = {
+            x: ent.x + 15, y: ent.y + 15,
+            vx: Math.cos(a)*w.speed, vy: Math.sin(a)*w.speed,
+            dmg: w.dmg, color: w.color, size: w.bulletSize,
+            lifetime: w.lifetime, isLaserBlink: true
         };
-        ent.bullets.push(bullet);
-        laserBullet = bullet;
-        createDamagePopup(ent.x + 15, ent.y + 15 - 20, 'LASER', '#ff66ff');
+        ent.bullets.push(b);
+        laserBullet = b;
+        createDamagePopup(ent.x + 15, ent.y - 5, 'LASER', '#ff66ff');
+        sfx('shoot');
         updateUIDisplay();
         return;
     }
-
     if (ent.weapon === 'anchor') {
         ent.cd = w.cd;
-        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+        const a = aimAngle(ent);
         ent.bullets.push({
             x: ent.x + 15, y: ent.y + 15,
-            vx: Math.cos(angle) * w.speed,
-            vy: Math.sin(angle) * w.speed,
-            dmg: w.dmg,
-            color: w.color,
-            size: 8,
-            lifetime: 150,
+            vx: Math.cos(a)*w.speed, vy: Math.sin(a)*w.speed,
+            dmg: w.dmg, color: w.color, size: 8, lifetime: 150,
             isAnchorBullet: true,
-            anchorDuration: w.duration,
-            anchorRadius: w.radius,
-            anchorPull: w.pullStrength,
-            anchorSlow: w.slowFactor
+            anchorDuration: w.duration, anchorRadius: w.radius,
+            anchorPull: w.pullStrength, anchorSlow: w.slowFactor
         });
+        sfx('shoot');
         return;
     }
 
     let spr = w.spread || 0.1;
-    let currentCd = w.cd;
-    let currentDmg = w.dmg;
-    let currentSpeed = w.speed;
+    let curCd = w.cd, curDmg = w.dmg, curSpd = w.speed;
 
     if (w.isOverlord) {
-        currentCd = Math.max(w.minCd, w.cd - fireDuration * w.spinUpSpeed);
-        currentDmg = Math.max(w.minDmg, w.dmg - fireDuration * w.damageDecay);
-        currentSpeed = Math.min(w.maxSpeed, w.speed + fireDuration * w.speedIncrease);
-        if (fireDuration < 15) {
-            spr = w.spread + (fireDuration / 15) * (w.maxSpread - w.spread);
-        } else {
-            spr = w.maxSpread - ((fireDuration - 15) / 15) * (w.maxSpread - w.minSpread);
-            spr = Math.max(w.minSpread, spr);
-        }
-        ent.cd = currentCd;
-    }
-    else if (w.isScatterBurst) {
+        curCd = Math.max(w.minCd, w.cd - fireDuration * w.spinUpSpeed);
+        curDmg = Math.max(w.minDmg, w.dmg - fireDuration * w.damageDecay);
+        curSpd = Math.min(w.maxSpeed, w.speed + fireDuration * w.speedIncrease);
+        if (fireDuration < 15) spr = w.spread + (fireDuration/15) * (w.maxSpread - w.spread);
+        else spr = Math.max(w.minSpread, w.maxSpread - ((fireDuration-15)/15) * (w.maxSpread - w.minSpread));
+        ent.cd = curCd;
+    } else if (w.isScatterBurst) {
         ent.cd = w.cd;
-        const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
-        for (let b = 0; b < w.burstCount; b++) {
+        const a = aimAngle(ent);
+        for (let b = 0; b < w.burstCount; b++)
             for (let p = 0; p < w.pelletsPerShot; p++) {
-                const fa = angle + (Math.random() - 0.5) * spr;
+                const fa = a + (Math.random()-0.5) * spr;
                 ent.bullets.push({
-                    x: ent.x + 15, y: ent.y + 15,
-                    vx: Math.cos(fa) * w.speed,
-                    vy: Math.sin(fa) * w.speed,
-                    dmg: w.dmg,
-                    color: w.color,
-                    size: 4,
-                    lifetime: 300
+                    x: ent.x+15, y: ent.y+15,
+                    vx: Math.cos(fa)*w.speed, vy: Math.sin(fa)*w.speed,
+                    dmg: w.dmg, color: w.color, size: 4, lifetime: 300,
+                    _weapon: ent.weapon
                 });
             }
-        }
+        sfx('heavy');
         return;
-    }
-    else {
+    } else {
         ent.cd = w.cd;
     }
 
-    const angle = Math.atan2(mouse.y + cam.y - (ent.y + 15), mouse.x + cam.x - (ent.x + 15));
+    const a = aimAngle(ent);
     for (let i = 0; i < (w.count || 1); i++) {
-        const fa = angle + (Math.random() - 0.5) * spr;
+        const fa = a + (Math.random()-0.5) * spr;
         ent.bullets.push({
-            x: ent.x + 15, y: ent.y + 15,
-            vx: Math.cos(fa) * currentSpeed,
-            vy: Math.sin(fa) * currentSpeed,
-            dmg: currentDmg,
-            color: w.color,
-            homing: w.homing || false,
-            pierce: w.pierce || false,
+            x: ent.x+15, y: ent.y+15,
+            vx: Math.cos(fa)*curSpd, vy: Math.sin(fa)*curSpd,
+            dmg: curDmg, color: w.color,
+            homing: w.homing || false, pierce: w.pierce || false,
             size: w.size || 5,
             grows: w.grows || false,
-            growSize: w.growSize || 0,
-            growDmg: w.growDmg || 0,
-            lifetime: 300
+            growSize: w.growSize || 0, growDmg: w.growDmg || 0,
+            lifetime: 300, _weapon: ent.weapon
         });
     }
+    sfx(ent.weapon === 'rocket' || ent.weapon === 'sniper' ? 'heavy' : 'shoot');
+    if (ent.weapon === 'sniper') triggerShake(4, 8);
     if (w.isOverlord) fireDuration++;
 }
 
-function update(deltaTime) {
+function bulletHitsEntity(b, e) {
+    if (b.px !== undefined) {
+        for (let i = 0; i <= 5; i++) {
+            const t = i / 5;
+            const x = b.px + (b.x - b.px) * t;
+            const y = b.py + (b.y - b.py) * t;
+            if (x > e.x && x < e.x + e.w && y > e.y && y < e.y + e.h) return true;
+        }
+        return false;
+    }
+    return b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h;
+}
+
+// ============ UPDATE ============
+function update() {
     if (isPaused) return;
+    document.getElementById('timer').innerText =
+        ((Date.now() - startTime)/1000).toFixed(2) + 's';
 
-    document.getElementById('timer').innerText = ((Date.now() - startTime)/1000).toFixed(2) + 's';
-
-    // Di chuyển người chơi
     let vx = 0, vy = 0;
-    if (keys.w) vy -= 5;
-    if (keys.s) vy += 5;
-    if (keys.a) vx -= 5;
-    if (keys.d) vx += 5;
+    if (keys.w || mobileKeys.w) vy -= 5;
+    if (keys.s || mobileKeys.s) vy += 5;
+    if (keys.a || mobileKeys.a) vx -= 5;
+    if (keys.d || mobileKeys.d) vx += 5;
     p1.x += vx; if (walls.some(w => checkHit(p1, w))) p1.x -= vx;
     p1.y += vy; if (walls.some(w => checkHit(p1, w))) p1.y -= vy;
 
-    cam.x = p1.x - c.width/2 + 15; cam.y = p1.y - c.height/2 + 15;
-    cam.x = Math.max(0, Math.min(cam.x, 1000 - c.width));
-    cam.y = Math.max(0, Math.min(cam.y, 600 - c.height));
-
-    // Chỉ OVERLORD X mới bắn liên tục khi giữ chuột
-    if (isMouseDown && p1.weapon === 'overlord') {
-        fire(p1);
-    } else {
-        if (fireDuration > 0) fireDuration = Math.max(0, fireDuration - 0.5);
-    }
+    if (isMouseDown && p1.weapon === 'overlord') fire(p1);
+    else if (fireDuration > 0) fireDuration = Math.max(0, fireDuration - 0.5);
 
     if (p1.cd > 0) p1.cd--;
+    if (p1.invuln > 0) p1.invuln--;
 
     damagePopups = damagePopups.filter(p => { p.life--; p.y += p.vy; p.vy -= 0.05; return p.life > 0; });
+    explosionEffects = explosionEffects.filter(e => --e.life > 0);
 
-    // Anchor hút
+    // Anchors
     anchors = anchors.filter(a => {
         a.life--;
-
-        const dxBoss = a.x - (boss.x + boss.w/2);
-        const dyBoss = a.y - (boss.y + boss.h/2);
-        const distBoss = Math.hypot(dxBoss, dyBoss);
-        if (distBoss < a.radius && distBoss > 5) {
-            const pullX = (dxBoss / distBoss) * a.pullStrength;
-            const pullY = (dyBoss / distBoss) * a.pullStrength;
-            const steps = 5;
-            for (let s = 0; s < steps; s++) {
-                const newX = boss.x + pullX / steps;
-                const newY = boss.y + pullY / steps;
-                const tempBoss = { x: newX, y: newY, w: boss.w, h: boss.h };
-                let collides = false;
-                for (let w of walls) {
-                    if (checkHit(tempBoss, w)) {
-                        collides = true;
-                        break;
-                    }
-                }
-                if (!collides) {
-                    boss.x = newX;
-                    boss.y = newY;
-                } else {
-                    break;
-                }
+        const dx = a.x - (boss.x + boss.w/2), dy = a.y - (boss.y + boss.h/2);
+        const dist = Math.hypot(dx, dy);
+        if (dist < a.radius && dist > 5) {
+            const pX = (dx/dist) * a.pullStrength, pY = (dy/dist) * a.pullStrength;
+            for (let s = 0; s < 5; s++) {
+                const nX = boss.x + pX/5, nY = boss.y + pY/5;
+                const tB = { x:nX, y:nY, w:boss.w, h:boss.h };
+                if (!walls.some(w => checkHit(tB, w))) { boss.x = nX; boss.y = nY; } else break;
             }
             boss.x = Math.max(30, Math.min(970 - boss.w, boss.x));
             boss.y = Math.max(30, Math.min(570 - boss.h, boss.y));
-            boss.slowTimer = 5;
-            boss.slowFactor = a.slowFactor;
+            boss.slowTimer = 5; boss.slowFactor = a.slowFactor;
         }
-
-        boss.minions.forEach(i => {
-            const dxI = a.x - (i.x + i.w/2);
-            const dyI = a.y - (i.y + i.h/2);
-            const distI = Math.hypot(dxI, dyI);
-            if (distI < a.radius && distI > 5) {
-                const pullX = (dxI / distI) * a.pullStrength * 1.5;
-                const pullY = (dyI / distI) * a.pullStrength * 1.5;
-                const steps = 5;
-                for (let s = 0; s < steps; s++) {
-                    const newX = i.x + pullX / steps;
-                    const newY = i.y + pullY / steps;
-                    const tempEnemy = { x: newX, y: newY, w: i.w, h: i.h };
-                    let collides = false;
-                    for (let w of walls) {
-                        if (checkHit(tempEnemy, w)) {
-                            collides = true;
-                            break;
-                        }
-                    }
-                    if (!collides) {
-                        i.x = newX;
-                        i.y = newY;
-                    } else {
-                        break;
-                    }
+        boss.minions.forEach(m => {
+            const dxI = a.x - (m.x + m.w/2), dyI = a.y - (m.y + m.h/2);
+            const dI = Math.hypot(dxI, dyI);
+            if (dI < a.radius && dI > 5) {
+                const pX = (dxI/dI) * a.pullStrength * 1.5, pY = (dyI/dI) * a.pullStrength * 1.5;
+                for (let s = 0; s < 5; s++) {
+                    const nX = m.x + pX/5, nY = m.y + pY/5;
+                    const tM = { x:nX, y:nY, w:m.w, h:m.h };
+                    if (!walls.some(w => checkHit(tM, w))) { m.x = nX; m.y = nY; } else break;
                 }
-                i.x = Math.max(30, Math.min(970 - i.w, i.x));
-                i.y = Math.max(30, Math.min(570 - i.h, i.y));
+                m.x = Math.max(30, Math.min(970 - m.w, m.x));
+                m.y = Math.max(30, Math.min(570 - m.h, m.y));
             }
         });
-
         return a.life > 0;
     });
 
-    if (laserBullet) {
-        laserBullet.lifetime--;
-        if (laserBullet.lifetime <= 0) {
-            const index = p1.bullets.indexOf(laserBullet);
-            if (index !== -1) p1.bullets.splice(index, 1);
-            laserBullet = null;
-            updateUIDisplay();
-        }
-    }
-
-    // BOSS AI
     const d = cfg[currentMode];
 
-    // Tạo ảo ảnh
+    // Illusions
     if (boss.illCd-- <= 0) {
-        const phase = phaseDefinitions[currentMode][bossPhase];
-        let illCount = d.ill;
-        if (phase.illMult) illCount = d.ill * phase.illMult;
-        if (phase.illCount) illCount = phase.illCount;
+        const phase = phaseDefinitions[currentMode][bossPhase] || {};
+        let count = d.ill;
+        if (phase.illMult) count = d.ill * phase.illMult;
+        if (phase.illCount) count = phase.illCount;
         let newIlls = [];
-        for (let i = 0; i < illCount; i++) {
-            let ill = {
-                x: Math.random()*800+50,
-                y: Math.random()*500+50,
-                w:40, h:40, t: phase.illDuration || 200,
-                hp: 5
-            };
+        for (let i = 0; i < count; i++) {
+            const ill = { x: Math.random()*800+50, y: Math.random()*500+50, w:40, h:40,
+                         t: boss.illDuration || 200, hp: 5 };
             findSafePosition(ill, 10);
             newIlls.push(ill);
         }
@@ -1024,52 +1490,48 @@ function update(deltaTime) {
     }
     boss.ill = boss.ill.filter(i => i.t-- > 0 && i.hp > 0);
 
-    // Xử lý minions
+    // Minions
     boss.minions = boss.minions.filter(m => m.hp > 0);
     boss.minions.forEach(m => {
-        let angle = Math.atan2(p1.y - m.y, p1.x - m.x);
-        m.x += Math.cos(angle) * 2;
-        m.y += Math.sin(angle) * 2;
+        const a = Math.atan2(p1.y - m.y, p1.x - m.x);
+        m.x += Math.cos(a) * 2;
+        m.y += Math.sin(a) * 2;
         if (walls.some(w => checkHit(m, w))) {
-            m.x -= Math.cos(angle) * 2;
-            m.y -= Math.sin(angle) * 2;
+            m.x -= Math.cos(a) * 2; m.y -= Math.sin(a) * 2;
         }
         if (Math.random() < 0.02) {
-            let a = Math.atan2(p1.y - (m.y + m.w/2), p1.x - (m.x + m.h/2));
+            const a2 = Math.atan2(p1.y - (m.y + m.w/2), p1.x - (m.x + m.h/2));
             boss.bullets.push({
-                x: m.x + m.w/2, y: m.y + m.h/2,
-                vx: Math.cos(a) * 5, vy: Math.sin(a) * 5,
+                x: m.x+m.w/2, y: m.y+m.h/2,
+                vx: Math.cos(a2)*5, vy: Math.sin(a2)*5,
                 dmg: 1, color: '#ff00ff', size: 5, lifetime: 180
             });
         }
     });
 
-    // Boss di chuyển
-    let bvx = 0, bvy = 0, dangerBullet = null, minDist = 180;
+    // Boss move
+    let bvx = 0, bvy = 0, danger = null, minD = 180;
     p1.bullets.forEach(b => {
         const dist = Math.hypot(b.x - (boss.x+25), b.y - (boss.y+25));
-        if (dist < minDist) { dangerBullet = b; minDist = dist; }
+        if (dist < minD) { danger = b; minD = dist; }
     });
-    if (dangerBullet) {
-        const escapeAngle = Math.atan2(dangerBullet.vy, dangerBullet.vx) + Math.PI/2;
-        bvx = Math.cos(escapeAngle) * d.moveSpeed * boss.speedMult;
-        bvy = Math.sin(escapeAngle) * d.moveSpeed * boss.speedMult;
+    if (danger) {
+        const ea = Math.atan2(danger.vy, danger.vx) + Math.PI/2;
+        bvx = Math.cos(ea) * d.moveSpeed * boss.speedMult;
+        bvy = Math.sin(ea) * d.moveSpeed * boss.speedMult;
     } else {
-        const attackAngle = Math.atan2(p1.y - boss.y, p1.x - boss.x);
-        bvx = Math.cos(attackAngle) * (d.moveSpeed * 0.7) * boss.speedMult;
-        bvy = Math.sin(attackAngle) * (d.moveSpeed * 0.7) * boss.speedMult;
+        const aa = Math.atan2(p1.y - boss.y, p1.x - boss.x);
+        bvx = Math.cos(aa) * d.moveSpeed * 0.7 * boss.speedMult;
+        bvy = Math.sin(aa) * d.moveSpeed * 0.7 * boss.speedMult;
     }
-
     if (boss.slowTimer > 0) {
-        bvx *= boss.slowFactor;
-        bvy *= boss.slowFactor;
+        bvx *= boss.slowFactor; bvy *= boss.slowFactor;
         boss.slowTimer--;
     }
-
     boss.x += bvx; if (walls.some(w => checkHit(boss, w))) boss.x -= bvx;
     boss.y += bvy; if (walls.some(w => checkHit(boss, w))) boss.y -= bvy;
 
-    // Boss bắn đạn với cooldown 2 giây
+    // Boss shoot
     if (boss.shootCd <= 0) {
         const a = Math.atan2(p1.y - (boss.y+25), p1.x - (boss.x+25));
         boss.bullets.push({
@@ -1077,85 +1539,67 @@ function update(deltaTime) {
             vx: Math.cos(a)*7, vy: Math.sin(a)*7,
             dmg: boss.damage || 1, color: 'red', size: 6, lifetime: 180
         });
+        sfx('bossShoot');
         boss.shootCd = 120;
-    } else {
-        boss.shootCd--;
-    }
+    } else boss.shootCd--;
 
-    // Kỹ năng đặc biệt
+    // Boss skills
     if (boss.skills.blink) {
         boss.blinkCd--;
         if (boss.blinkCd <= 0) {
-            let attempts = 10;
-            let success = false;
-            while (attempts-- > 0 && !success) {
-                let angle = Math.random() * Math.PI * 2;
-                let dist = 100 + Math.random() * 100;
-                let newX = p1.x + Math.cos(angle) * dist - boss.w/2;
-                let newY = p1.y + Math.sin(angle) * dist - boss.h/2;
-                newX = Math.max(30, Math.min(970 - boss.w, newX));
-                newY = Math.max(30, Math.min(570 - boss.h, newY));
-                let tempBoss = { x: newX, y: newY, w: boss.w, h: boss.h };
-                let collides = false;
-                for (let w of walls) {
-                    if (checkHit(tempBoss, w)) {
-                        collides = true;
-                        break;
-                    }
-                }
-                if (!collides) {
-                    boss.x = newX;
-                    boss.y = newY;
-                    success = true;
+            let attempts = 10, ok = false;
+            while (attempts-- > 0 && !ok) {
+                const a = Math.random() * Math.PI * 2;
+                const dist = 100 + Math.random() * 100;
+                let nX = p1.x + Math.cos(a)*dist - boss.w/2;
+                let nY = p1.y + Math.sin(a)*dist - boss.h/2;
+                nX = Math.max(30, Math.min(970 - boss.w, nX));
+                nY = Math.max(30, Math.min(570 - boss.h, nY));
+                const tB = { x:nX, y:nY, w:boss.w, h:boss.h };
+                if (!walls.some(w => checkHit(tB, w))) {
+                    boss.x = nX; boss.y = nY; ok = true;
                 }
             }
             createExplosionEffect(boss.x + boss.w/2, boss.y + boss.h/2);
+            triggerShake(5, 10);
+            sfx('blink');
             boss.blinkCd = 240;
         }
     }
-
     if (boss.skills.swap) {
         boss.swapCd--;
         if (boss.swapCd <= 0) {
-            let tempX = p1.x, tempY = p1.y;
-            p1.x = boss.x;
-            p1.y = boss.y;
-            boss.x = tempX;
-            boss.y = tempY;
-            pushOutOfWalls(p1);
-            pushOutOfWalls(boss);
+            const tX = p1.x, tY = p1.y;
+            p1.x = boss.x; p1.y = boss.y;
+            boss.x = tX; boss.y = tY;
+            pushOutOfWalls(p1); pushOutOfWalls(boss);
             createExplosionEffect(p1.x + p1.w/2, p1.y + p1.h/2);
             createExplosionEffect(boss.x + boss.w/2, boss.y + boss.h/2);
+            triggerShake(8, 15);
+            sfx('blink');
             boss.swapCd = 300;
         }
     }
-
     if (boss.skills.copyBullet) {
         boss.copyCd--;
         if (boss.copyCd <= 0) {
-            let bulletsToCopy = p1.bullets.filter(b => !b.isLaserBlink);
-            bulletsToCopy.forEach(b => {
+            p1.bullets.filter(b => !b.isLaserBlink).forEach(b => {
                 boss.bullets.push({
-                    x: boss.x + 25, y: boss.y + 25,
-                    vx: b.vx, vy: b.vy,
-                    dmg: b.dmg,
-                    color: '#ff0000',
-                    size: b.size,
-                    lifetime: b.lifetime
+                    x: boss.x+25, y: boss.y+25,
+                    vx: b.vx, vy: b.vy, dmg: b.dmg,
+                    color: '#ff0000', size: b.size, lifetime: b.lifetime
                 });
             });
             boss.copyCd = 1200;
         }
     }
-
     if (boss.skills.controlBullet) {
         boss.controlCd--;
         if (boss.controlCd <= 0) {
             p1.bullets.forEach(b => {
                 if (!b.isLaserBlink) {
-                    let angle = Math.atan2(p1.y - b.y, p1.x - b.x);
-                    b.vx = Math.cos(angle) * 5;
-                    b.vy = Math.sin(angle) * 5;
+                    const a = Math.atan2(p1.y - b.y, p1.x - b.x);
+                    b.vx = Math.cos(a)*5; b.vy = Math.sin(a)*5;
                 }
             });
             boss.controlCd = 1800;
@@ -1164,21 +1608,21 @@ function update(deltaTime) {
 
     // Boss dẫm mìn
     for (let i = mines.length - 1; i >= 0; i--) {
-        const mine = mines[i];
-        const mineRect = { x: mine.x - mine.w/2, y: mine.y - mine.h/2, w: mine.w, h: mine.h };
-        if (checkHit(boss, mineRect)) {
+        const m = mines[i];
+        const r = { x:m.x-m.w/2, y:m.y-m.h/2, w:m.w, h:m.h };
+        if (checkHit(boss, r)) {
             boss.hp -= 20;
+            boss.lastHit = 'mine';
             createDamagePopup(boss.x + boss.w/2, boss.y, 20, '#ff8800');
             bossHitEffect = 15;
-            explodeMine(mine);
+            explodeMine(m);
             mines.splice(i, 1);
             updateUIDisplay();
         }
     }
 
-    // ██████ XỬ LÝ ĐẠN (ĐÃ SỬA LASER) ██████
+    // Bullets
     [p1, boss].forEach(ent => {
-        if (ent.cd > 0 && ent.weapon !== 'mine') ent.cd--;
         ent.bullets = ent.bullets.filter(b => {
             if (b.lifetime !== undefined) {
                 b.lifetime--;
@@ -1191,33 +1635,23 @@ function update(deltaTime) {
                     return false;
                 }
             }
+            b.px = b.x; b.py = b.y;
 
-            // ██████ LASER: XỬ LÝ DI CHUYỂN VÀ VA CHẠM TƯỜNG ██████
             if (b.isLaserBlink) {
                 let collided = false;
-                // Di chuyển từng bước nhỏ và kiểm tra tường
-                for (let step = 0; step < 2; step++) {
-                    const oldX = b.x;
-                    const oldY = b.y;
-                    b.x += b.vx / 2;
-                    b.y += b.vy / 2;
+                for (let s = 0; s < 2; s++) {
+                    const oX = b.x, oY = b.y;
+                    b.x += b.vx/2; b.y += b.vy/2;
                     for (let w of walls) {
                         if (pointInWall(b.x, b.y, w)) {
                             collided = true;
-                            b.x = oldX;
-                            b.y = oldY;
+                            b.x = oX; b.y = oY;
                             break;
                         }
                     }
-                    if (collided) {
-                        b.vx = 0;
-                        b.vy = 0;
-                        break;
-                    }
+                    if (collided) { b.vx = 0; b.vy = 0; break; }
                 }
-            }
-            // ANCHOR BULLET
-            else if (b.isAnchorBullet && ent === p1) {
+            } else if (b.isAnchorBullet && ent === p1) {
                 for (let w of walls) {
                     if (pointInWall(b.x, b.y, w)) {
                         createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
@@ -1225,9 +1659,8 @@ function update(deltaTime) {
                         return false;
                     }
                 }
-                for (let step = 0; step < 2; step++) {
-                    b.x += b.vx / 2;
-                    b.y += b.vy / 2;
+                for (let s = 0; s < 2; s++) {
+                    b.x += b.vx/2; b.y += b.vy/2;
                     for (let w of walls) {
                         if (pointInWall(b.x, b.y, w)) {
                             createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
@@ -1236,81 +1669,111 @@ function update(deltaTime) {
                         }
                     }
                 }
-            }
-            // CÁC ĐẠN KHÁC
-            else {
-                for (let step = 0; step < 2; step++) {
-                    b.x += b.vx / 2;
-                    b.y += b.vy / 2;
-                    for (let w of walls) {
-                        if (pointInWall(b.x, b.y, w)) {
-                            return false;
-                        }
-                    }
+            } else {
+                for (let s = 0; s < 2; s++) {
+                    b.x += b.vx/2; b.y += b.vy/2;
+                    for (let w of walls) if (pointInWall(b.x, b.y, w)) return false;
                 }
             }
 
             if (b.grows) {
-                if (b.growSize) b.size += b.growSize;
-                else b.size += 0.1;
-                if (b.growDmg) b.dmg += b.growDmg;
-                else b.dmg += 0.1;
+                b.size += b.growSize || 0.1;
+                b.dmg += b.growDmg || 0.1;
             }
-
             if (b.homing && ent === p1) {
                 const targets = [boss, ...boss.ill, ...boss.minions].filter(t => t.hp > 0);
-                if (targets.length > 0) {
+                if (targets.length) {
                     let near = targets[0], dMin = Infinity;
                     targets.forEach(t => {
                         const dist = Math.hypot(t.x - b.x, t.y - b.y);
                         if (dist < dMin) { dMin = dist; near = t; }
                     });
                     const a = Math.atan2(near.y - b.y, near.x - b.x);
-                    b.vx += Math.cos(a) * 0.5;
-                    b.vy += Math.sin(a) * 0.5;
-                    const s = Math.hypot(b.vx, b.vy);
-                    if (s > 0) {
-                        b.vx = (b.vx / s) * weapons.rocket.speed;
-                        b.vy = (b.vy / s) * weapons.rocket.speed;
+                    b.vx += Math.cos(a)*0.5; b.vy += Math.sin(a)*0.5;
+                    const sp = Math.hypot(b.vx, b.vy);
+                    if (sp > 0) {
+                        b.vx = (b.vx/sp) * weapons.rocket.speed;
+                        b.vy = (b.vy/sp) * weapons.rocket.speed;
                     }
                 }
             }
 
-            // ██████ VA CHẠM ENEMY (LASER GÂY DMG) ██████
             const enemies = (ent === p1) ? [boss, ...boss.ill, ...boss.minions].filter(e => e.hp > 0) : [p1];
-            for (let e of enemies) {
-                if (b.x > e.x && b.x < e.x + e.w && b.y > e.y && b.y < e.y + e.h) {
-                    // LASER gây sát thương
-                    e.hp -= b.dmg;
-                    createDamagePopup(e.x + e.w/2, e.y, b.dmg, ent === p1 ? '#ff66ff' : '#ff8888');
-                    if (e === boss) bossHitEffect = 10;
-                    if (e === p1) createDamagePopup(e.x + e.w/2, e.y, b.dmg, '#ff4444');
-                    
-                    // Laser xuyên qua (không biến mất)
-                    if (!b.isLaserBlink) {
-                        return b.pierce || false;
+            const stopped = b.isLaserBlink && b.vx === 0 && b.vy === 0;
+            if (!stopped) {
+                for (let e of enemies) {
+                    if (bulletHitsEntity(b, e)) {
+                        if (b.isAnchorBullet) {
+                            createAnchor(b.x, b.y, b.anchorDuration, b.anchorRadius, b.anchorPull, b.anchorSlow);
+                            updateUIDisplay();
+                            return false;
+                        }
+                        if (e === p1 && p1.invuln > 0) {
+                            if (!b.isLaserBlink) return b.pierce || false;
+                            continue;
+                        }
+                        if (b.isLaserBlink) {
+                            if (!b._hitTargets) b._hitTargets = new Set();
+                            if (b._hitTargets.has(e)) continue;
+                            b._hitTargets.add(e);
+                        }
+                        e.hp -= b.dmg;
+                        if (e === boss && ent === p1) {
+                            boss.lastHit = b._weapon || (b.isLaserBlink ? 'laserblink' : null);
+                        }
+                        createDamagePopup(e.x + e.w/2, e.y, b.dmg, ent === p1 ? '#ff66ff' : '#ff4444');
+                        if (e === boss) bossHitEffect = 10;
+                        sfx(e === p1 ? 'hurt' : 'hit');
+                        if (e === p1) {
+                            p1.invuln = 24;
+                            triggerShake(8, 12);
+                            if (endlessActive) endlessNoHit = false;
+                        }
+                        if (!b.isLaserBlink) return b.pierce || false;
                     }
                 }
             }
-
             return true;
         });
     });
 
-    if (laserBullet && !p1.bullets.includes(laserBullet)) {
-        laserBullet = null;
-    }
+    if (laserBullet && !p1.bullets.includes(laserBullet)) laserBullet = null;
 
     updateUIDisplay();
     if (bossHitEffect > 0) bossHitEffect--;
-    if (p1.hp <= 0) endGame(false);
-    if (boss.hp <= 0) endGame(true);
+
+    if (p1.hp <= 0) { endGame(false); return; }
+    if (boss.hp <= 0) {
+        if (endlessActive) {
+            endlessWave++;
+            if (endlessWave >= 5 && endlessNoHit) unlockAchievement('noHitWave5');
+            if (endlessWave >= 10) unlockAchievement('endless10');
+            if (endlessWave >= 20) unlockAchievement('endless20');
+            triggerShake(15, 30);
+            spawnBossForWave(endlessWave);
+            updateUIDisplay();
+            const wd = localStorage.getItem('best_endless');
+            if (!wd || endlessWave > parseInt(wd)) localStorage.setItem('best_endless', endlessWave);
+        } else {
+            triggerShake(20, 40);
+            endGame(true);
+        }
+    }
 }
 
+// ============ DRAW ============
 function draw() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, c.width, c.height);
-    ctx.save();
-    ctx.translate(-cam.x, -cam.y);
+
+    if (screenShake.duration > 0) {
+        const sx = (Math.random() - 0.5) * 2 * screenShake.intensity;
+        const sy = (Math.random() - 0.5) * 2 * screenShake.intensity;
+        ctx.translate(sx, sy);
+        screenShake.duration--;
+        screenShake.intensity *= 0.88;
+        if (screenShake.duration <= 0) screenShake.intensity = 0;
+    }
 
     ctx.fillStyle = '#444';
     walls.forEach(w => { ctx.fillRect(w.x, w.y, w.w, w.h); ctx.strokeStyle = '#777'; ctx.strokeRect(w.x, w.y, w.w, w.h); });
@@ -1318,28 +1781,18 @@ function draw() {
     anchors.forEach(a => {
         ctx.beginPath();
         ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2);
-        ctx.fillStyle = a.color + '22';
-        ctx.fill();
-        ctx.strokeStyle = a.color;
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.fillStyle = a.color + '22'; ctx.fill();
+        ctx.strokeStyle = a.color; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = a.color;
-        ctx.beginPath();
-        ctx.arc(a.x, a.y, 6, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(a.x, a.y, 6, 0, Math.PI * 2); ctx.fill();
     });
 
     if (laserBullet && laserBullet.lifetime > 0) {
         ctx.fillStyle = laserBullet.color;
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = laserBullet.color;
-        ctx.beginPath();
-        ctx.arc(laserBullet.x, laserBullet.y, laserBullet.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.shadowBlur = 15; ctx.shadowColor = laserBullet.color;
+        ctx.beginPath(); ctx.arc(laserBullet.x, laserBullet.y, laserBullet.size, 0, Math.PI * 2); ctx.fill();
         ctx.shadowBlur = 0;
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
     }
 
     ctx.globalAlpha = 0.6;
@@ -1349,32 +1802,25 @@ function draw() {
     boss.minions.forEach(m => {
         ctx.fillStyle = m.color || '#ff00ff';
         ctx.fillRect(m.x, m.y, m.w, m.h);
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
         ctx.strokeRect(m.x, m.y, m.w, m.h);
     });
-
     mines.forEach(m => {
         ctx.fillStyle = m.color;
         ctx.fillRect(m.x - m.w/2, m.y - m.h/2, m.w, m.h);
-        ctx.strokeStyle = '#aaa';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1;
         ctx.strokeRect(m.x - m.w/2, m.y - m.h/2, m.w, m.h);
     });
 
     p1.bullets.forEach(b => {
         if (b !== laserBullet) {
             ctx.fillStyle = b.color;
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
-            ctx.fill();
+            ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
         }
     });
     boss.bullets.forEach(b => {
         ctx.fillStyle = b.color;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.size, 0, Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill();
     });
 
     if (bossHitEffect > 0) {
@@ -1384,13 +1830,11 @@ function draw() {
     ctx.fillStyle = '#e74c3c';
     ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
 
+    if (p1.invuln > 0 && Math.floor(p1.invuln / 4) % 2 === 0) ctx.globalAlpha = 0.3;
     ctx.fillStyle = '#3498db';
     ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+    ctx.globalAlpha = 1;
 
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(-cam.x, -cam.y);
     damagePopups.forEach(p => {
         ctx.globalAlpha = p.life/60;
         ctx.fillStyle = p.color;
@@ -1398,51 +1842,55 @@ function draw() {
         ctx.textAlign = 'center';
         ctx.fillText(p.text, p.x, p.y);
     });
-    ctx.restore();
+    ctx.globalAlpha = 1;
 
-    ctx.save();
-    ctx.translate(-cam.x, -cam.y);
-    explosionEffects = explosionEffects.filter(eff => {
-        eff.life--;
+    explosionEffects.forEach(eff => {
         ctx.globalAlpha = eff.life / 16;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ff8800';
+        ctx.shadowBlur = 20; ctx.shadowColor = '#ff8800';
         ctx.beginPath();
         ctx.arc(eff.x, eff.y, eff.radius * (1 - eff.life/16) + 5, 0, Math.PI*2);
-        ctx.fillStyle = '#ffaa00';
-        ctx.fill();
-        return eff.life > 0;
+        ctx.fillStyle = '#ffaa00'; ctx.fill();
     });
-    ctx.restore();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
 
-    // Fog of war
-    fctx.clearRect(0,0,fogC.width,fogC.height);
+    fctx.globalCompositeOperation = 'source-over';
+    fctx.clearRect(0, 0, fogC.width, fogC.height);
     fctx.fillStyle = 'rgba(0,0,0,0.95)';
-    fctx.fillRect(0,0,fogC.width,fogC.height);
+    fctx.fillRect(0, 0, fogC.width, fogC.height);
     fctx.globalCompositeOperation = 'destination-out';
-    const g = fctx.createRadialGradient(
-        p1.x - cam.x + 15, p1.y - cam.y + 15, 20,
-        p1.x - cam.x + 15, p1.y - cam.y + 15, p1.vision
-    );
+    const px = p1.x + 15, py = p1.y + 15;
+    const g = fctx.createRadialGradient(px, py, 20, px, py, p1.vision);
     g.addColorStop(0, 'white');
     g.addColorStop(1, 'transparent');
     fctx.fillStyle = g;
     fctx.beginPath();
-    fctx.arc(p1.x - cam.x + 15, p1.y - cam.y + 15, p1.vision, 0, Math.PI*2);
+    fctx.arc(px, py, p1.vision, 0, Math.PI*2);
     fctx.fill();
     ctx.drawImage(fogC, 0, 0);
 }
 
+// ============ LOOP ============
+const STEP = 1000 / 60;
 function gameLoop(timestamp) {
     if (!lastTime) lastTime = timestamp;
-    const deltaTime = timestamp - lastTime;
+    let delta = timestamp - lastTime;
     lastTime = timestamp;
-    if (deltaTime > 0) { update(deltaTime); draw(); }
+    if (delta > 100) delta = 100;
+    acc += delta;
+    let steps = 0;
+    while (acc >= STEP && steps < 5) {
+        update(); acc -= STEP; steps++;
+    }
+    if (steps === 5) acc = 0;
+    draw();
     requestAnimationFrame(gameLoop);
 }
 
 updateBestDisplay();
 initGameVars('normal');
+bindNameInput();
 requestAnimationFrame(gameLoop);
 </script>
 </body>
