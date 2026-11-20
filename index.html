@@ -632,6 +632,7 @@ let firebaseReady = false;
 let currentUser = null;
 let confirmationResult = null;
 let recaptchaVerifier = null;
+let recaptchaRenderPromise = null;
 
 try {
     if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_')) {
@@ -741,7 +742,12 @@ function switchAuthTab(tabId, btn) {
     document.querySelectorAll('#auth-modal .tab').forEach(t => t.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
-    if (tabId === 'auth-phone') initRecaptcha();
+    if (tabId === 'auth-phone') {
+        initRecaptcha().catch(err => {
+            console.warn('Không thể khởi tạo reCAPTCHA:', err);
+            showAuthMessage('Không tải được reCAPTCHA. Hãy kiểm tra kết nối mạng và cấu hình Firebase.', 'error');
+        });
+    }
 }
 
 function formatAuthError(err) {
@@ -824,43 +830,72 @@ async function loginWithGoogle() {
     }
 }
 
-function initRecaptcha() {
-    if (!firebaseReady || !auth || recaptchaVerifier) return;
-    try {
-        recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            size: 'normal',
-            callback: () => {}
-        });
-        recaptchaVerifier.render();
-    } catch (e) {
-        console.warn('Recaptcha init error:', e);
+async function initRecaptcha() {
+    if (!firebaseReady || !auth) {
+        throw new Error('Firebase Auth chưa sẵn sàng.');
     }
+    if (recaptchaVerifier) return recaptchaVerifier;
+    if (recaptchaRenderPromise) return recaptchaRenderPromise;
+
+    recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+        size: 'normal',
+        callback: () => {},
+        'expired-callback': () => {
+            showAuthMessage('reCAPTCHA đã hết hạn. Vui lòng xác minh lại.', 'error');
+        }
+    });
+
+    recaptchaRenderPromise = recaptchaVerifier.render()
+        .then(() => recaptchaVerifier)
+        .catch(err => {
+            console.error('reCAPTCHA render failed:', err);
+            try { recaptchaVerifier?.clear(); } catch (_) {}
+            recaptchaVerifier = null;
+            throw err;
+        })
+        .finally(() => {
+            recaptchaRenderPromise = null;
+        });
+
+    return recaptchaRenderPromise;
 }
 
 function normalizeVNPhone(raw) {
-    let p = raw.replace(/\s+/g, '');
+    let p = String(raw || '').replace(/[\s().-]/g, '');
     if (p.startsWith('0')) p = '+84' + p.slice(1);
+    else if (p.startsWith('84')) p = '+' + p;
     else if (!p.startsWith('+')) p = '+' + p;
     return p;
 }
 
 async function sendPhoneOTP() {
     if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
-    const raw = document.getElementById('auth-phone-input').value.trim();
+    const input = document.getElementById('auth-phone-input');
+    const raw = input ? input.value.trim() : '';
     if (!raw) return showAuthMessage('Vui lòng nhập số điện thoại.');
+
     const phone = normalizeVNPhone(raw);
+    if (!/^\+[1-9]\d{7,14}$/.test(phone)) {
+        return showAuthMessage('Số điện thoại chưa đúng định dạng quốc tế. Ví dụ: 0396006544 hoặc +84396006544.');
+    }
+
     try {
         clearAuthMessage();
-        if (!recaptchaVerifier) initRecaptcha();
-        confirmationResult = await auth.signInWithPhoneNumber(phone, recaptchaVerifier);
+        const verifier = await initRecaptcha();
+        confirmationResult = await auth.signInWithPhoneNumber(phone, verifier);
         document.getElementById('otp-verify-section').style.display = 'block';
         showAuthMessage('Đã gửi mã OTP tới ' + phone + '. Vui lòng kiểm tra tin nhắn.', 'success');
     } catch (err) {
+        console.error('Phone OTP failed:', err.code, err.message, err);
         showAuthMessage(formatAuthError(err), 'error');
+        confirmationResult = null;
         if (recaptchaVerifier) {
             try { recaptchaVerifier.clear(); } catch (_) {}
             recaptchaVerifier = null;
-            initRecaptcha();
+        }
+        recaptchaRenderPromise = null;
+        try { await initRecaptcha(); } catch (recaptchaErr) {
+            console.warn('Could not recreate reCAPTCHA:', recaptchaErr);
         }
     }
 }
@@ -1650,6 +1685,7 @@ function switchWeapon(idx) {
 
 // ============ INPUT ============
 addEventListener('keydown', e => {
+    if (!e || typeof e.key !== 'string') return;
     // Bỏ qua phím tắt game khi đang gõ vào ô input
     if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
         if (e.key === 'Escape') document.activeElement.blur();
@@ -1670,7 +1706,10 @@ addEventListener('keydown', e => {
     if (/^[0-8]$/.test(e.key) && !isPaused) switchWeapon(parseInt(e.key));
     keys[key] = true;
 });
-addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+addEventListener('keyup', e => {
+    if (!e || typeof e.key !== 'string') return;
+    keys[e.key.toLowerCase()] = false;
+});
 addEventListener('blur', () => {
     keys = {}; mobileKeys = { w:false, a:false, s:false, d:false };
     isMouseDown = false;
