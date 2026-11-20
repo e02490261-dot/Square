@@ -34,22 +34,22 @@
             left: 50%; 
             transform: translate(-50%, -50%); 
             background: rgba(15,15,15,0.98); 
-            padding: 40px; 
+            padding: 32px; 
             border-radius: 12px; 
             border: 1px solid #ffd700; 
             z-index: 1000; 
             min-width: 320px; 
-            max-width: 90vw;
-            max-height: 85vh;
+            max-width: 92vw;
+            max-height: 88vh;
             overflow-y: auto;
             box-shadow: 0 0 50px #000;
         }
         .btn { 
             display: block; 
             width: 100%; 
-            padding: 15px; 
-            margin: 10px 0; 
-            font-size: 16px; 
+            padding: 13px; 
+            margin: 8px 0; 
+            font-size: 15px; 
             cursor: pointer; 
             border: none; 
             border-radius: 6px; 
@@ -75,6 +75,141 @@
             text-transform: none;
             letter-spacing: 0;
         }
+
+        /* ====== AUTH & AVATAR STYLES ====== */
+        .account-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+        .account-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+        }
+        .avatar-preview {
+            width: 42px;
+            height: 42px;
+            border-radius: 6px;
+            background: #3498db;
+            border: 2px solid #ffd700;
+            object-fit: cover;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            overflow: hidden;
+        }
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .account-meta {
+            min-width: 0;
+            flex: 1;
+        }
+        .account-meta .acc-name {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .account-meta .acc-sub {
+            color: #aaa;
+            font-size: 11px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .small-action-btn {
+            background: #ffd700;
+            color: #000;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .small-action-btn.secondary {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+        .small-action-btn:hover { filter: brightness(1.15); }
+
+        .auth-input {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            margin: 8px 0;
+            padding: 10px 12px;
+            background: #1c1c1c;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        .auth-input:focus {
+            outline: none;
+            border-color: #ffd700;
+        }
+        .social-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 11px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .social-btn:hover { filter: brightness(1.12); transform: scale(1.01); }
+        .google-btn { background: #ffffff; color: #222; }
+        .phone-btn { background: #27ae60; color: #fff; }
+        .auth-msg {
+            font-size: 12px;
+            margin-top: 8px;
+            padding: 8px;
+            border-radius: 6px;
+            display: none;
+            text-align: left;
+            line-height: 1.4;
+        }
+        .auth-msg.error { display: block; background: rgba(231, 76, 60, 0.2); border: 1px solid #e74c3c; color: #ff8a80; }
+        .auth-msg.success { display: block; background: rgba(46, 204, 113, 0.2); border: 1px solid #2ecc71; color: #80e27e; }
+        .avatar-upload-box {
+            margin-top: 12px;
+            padding: 10px;
+            background: rgba(255,255,255,0.04);
+            border: 1px dashed #666;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
         .stats { 
             position: absolute; 
             top: 20px; 
@@ -213,19 +348,19 @@
         .tab-bar {
             display: flex;
             gap: 5px;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             border-bottom: 1px solid #444;
         }
         .tab {
             flex: 1;
-            padding: 10px;
+            padding: 10px 6px;
             cursor: pointer;
             background: #222;
             color: #888;
             border: none;
             font-weight: bold;
             text-transform: uppercase;
-            font-size: 12px;
+            font-size: 11px;
         }
         .tab.active { background: #ffd700; color: #000; }
         .tab-content { display: none; text-align: left; }
@@ -268,27 +403,102 @@
 <body>
 
 <div id="menu" class="overlay">
-    <h1 style="color:#ffd700; margin:0 0 25px; letter-spacing:2px;">CHIẾN TRƯỜNG</h1>
+    <h1 style="color:#ffd700; margin:0 0 16px; letter-spacing:2px;">CHIẾN TRƯỜNG</h1>
+
+    <!-- Thanh tài khoản & Avatar nhân vật -->
+    <div class="account-bar">
+        <div class="account-info">
+            <div class="avatar-preview" id="menu-avatar-preview">🟦</div>
+            <div class="account-meta">
+                <div class="acc-name" id="menu-user-name">Khách</div>
+                <div class="acc-sub" id="menu-user-provider">Chưa đăng nhập • Chơi chế độ Khách</div>
+            </div>
+        </div>
+        <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button class="small-action-btn" id="open-auth-btn" onclick="showModal('auth-modal')">Đăng nhập</button>
+            <button class="small-action-btn secondary" id="logout-btn" onclick="logoutUser()" style="display:none;">Thoát</button>
+        </div>
+    </div>
+
     <button class="btn easy" onclick="startGame('easy')">DỄ <span id="best-easy" class="best-txt"></span></button>
     <button class="btn normal" onclick="startGame('normal')">THƯỜNG <span id="best-normal" class="best-txt"></span></button>
     <button class="btn hard" onclick="startGame('hard')">KHÓ <span id="best-hard" class="best-txt"></span></button>
     <button class="btn insane" onclick="startGame('insane')">ÁC MỘNG <span id="best-insane" class="best-txt"></span></button>
     <button class="btn endless" onclick="startGame('endless')">♾️ VÔ TẬN <span id="best-endless" class="best-txt"></span></button>
     
-    <div style="margin-top:20px; text-align:left;">
-        <label for="player-name-input" style="color:#aaa; font-size:12px;">Tên của bạn (hiển thị trên BXH):</label>
+    <div style="margin-top:14px; text-align:left;">
+        <label for="player-name-input" style="color:#aaa; font-size:12px;">Tên hiển thị trên BXH:</label>
         <input id="player-name-input" type="text" maxlength="16" autocomplete="off"
                style="display:block; width:100%; box-sizing:border-box; margin-top:5px; padding:8px;
                       background:#222; color:#ffd700; border:1px solid #555; border-radius:4px;
                       text-align:center; font-size:14px; font-weight:bold;">
     </div>
+
+    <!-- Tải ảnh lên làm nhân vật -->
+    <div class="avatar-upload-box">
+        <div style="text-align:left; font-size:12px; color:#ccc;">
+            <b style="color:#ffd700;">🖼️ Skin Nhân Vật</b><br>
+            <span style="font-size:11px; color:#999;">Tải ảnh lên để thay ô vuông xanh</span>
+        </div>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
+            <button type="button" class="small-action-btn" onclick="document.getElementById('avatar-file-input').click()">Chọn ảnh</button>
+            <button type="button" class="small-action-btn secondary" id="reset-avatar-btn" onclick="resetPlayerAvatar()" style="display:none;">Mặc định</button>
+        </div>
+    </div>
+
     <button class="btn menu-btn" onclick="showModal('leaderboard-modal')" style="margin-top:10px;">🏆 BẢNG XẾP HẠNG</button>
     <button class="btn menu-btn" onclick="showModal('achievements-modal')">🎖️ THÀNH TỰU</button>
     
-    <div style="margin-top:20px; color:#aaa; font-size:14px;">
-        <p>WASD: Di chuyển | Chuột trái: Bắn | Chuột phải: Dịch chuyển / Kích nổ</p>
-        <p><span class="key">0-8</span> Đổi vũ khí | <span class="key">P</span> Tạm dừng | <span class="key">R</span> Chơi lại | <span class="key">ESC</span> Menu</p>
+    <div style="margin-top:14px; color:#aaa; font-size:13px;">
+        <p style="margin:4px 0;">WASD: Di chuyển | Chuột trái: Bắn | Chuột phải: Dịch chuyển / Kích nổ</p>
+        <p style="margin:4px 0;"><span class="key">0-8</span> Đổi vũ khí | <span class="key">P</span> Tạm dừng | <span class="key">R</span> Chơi lại | <span class="key">ESC</span> Menu</p>
     </div>
+</div>
+
+<!-- MODAL ĐĂNG NHẬP / ĐĂNG KÝ -->
+<div id="auth-modal" class="overlay" style="display:none">
+    <h2 style="color:#ffd700; margin-top:0;">🔐 TÀI KHOẢN NGƯỜI CHƠI</h2>
+    <div class="tab-bar">
+        <button class="tab active" onclick="switchAuthTab('auth-email', this)">GMAIL / EMAIL</button>
+        <button class="tab" onclick="switchAuthTab('auth-social', this)">GOOGLE</button>
+        <button class="tab" onclick="switchAuthTab('auth-phone', this)">SỐ ĐIỆN THOẠI</button>
+    </div>
+
+    <!-- Tab Gmail / Email -->
+    <div id="auth-email" class="tab-content active">
+        <input id="auth-email-input" class="auth-input" type="email" placeholder="Nhập địa chỉ Gmail (vd: ten@gmail.com)">
+        <input id="auth-pass-input" class="auth-input" type="password" placeholder="Mật khẩu (tối thiểu 6 ký tự)">
+        <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="btn replay-btn" style="margin:0;" onclick="loginWithEmail()">ĐĂNG NHẬP</button>
+            <button class="btn normal" style="margin:0;" onclick="registerWithEmail()">ĐĂNG KÝ</button>
+        </div>
+        <button class="small-action-btn secondary" style="width:100%; margin-top:8px;" onclick="resetPasswordEmail()">Quên mật khẩu? Gửi link đặt lại về Gmail</button>
+    </div>
+
+    <!-- Tab Google -->
+    <div id="auth-social" class="tab-content">
+        <button class="social-btn google-btn" onclick="loginWithGoogle()">
+            <span>🔴</span> Tiếp tục với Google (Gmail)
+        </button>
+        <p style="font-size:11px; color:#999; margin-top:8px;">
+            * Cần bật Google Sign-In trong Firebase Console và mở trang qua domain đã cấp phép (hoặc localhost).
+        </p>
+    </div>
+
+    <!-- Tab Số điện thoại -->
+    <div id="auth-phone" class="tab-content">
+        <input id="auth-phone-input" class="auth-input" type="tel" placeholder="Số điện thoại (vd: +84912345678 hoặc 0912345678)">
+        <div id="recaptcha-container" style="margin:8px 0; display:flex; justify-content:center;"></div>
+        <button class="social-btn phone-btn" onclick="sendPhoneOTP()">📲 GỬI MÃ OTP</button>
+        <div id="otp-verify-section" style="display:none; margin-top:10px;">
+            <input id="auth-otp-input" class="auth-input" type="text" maxlength="6" placeholder="Nhập mã xác nhận 6 số">
+            <button class="btn replay-btn" onclick="verifyPhoneOTP()">XÁC NHẬN MÃ OTP</button>
+        </div>
+    </div>
+
+    <div id="auth-message" class="auth-msg"></div>
+    <button class="btn menu-btn" onclick="hideModal('auth-modal')" style="margin-top:16px;">ĐÓNG</button>
 </div>
 
 <div id="leaderboard-modal" class="overlay" style="display:none">
@@ -394,13 +604,14 @@
     </div>
 </div>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK (App + Realtime Database + Auth) -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 
 <script>
 // ============================================================
-// SQUARE: EXCLUSIVE — FULL EDITION + FIREBASE TOP 100
+// SQUARE: EXCLUSIVE — FULL EDITION + FIREBASE AUTH & AVATAR
 // ============================================================
 
 // ===== FIREBASE CONFIG =====
@@ -416,11 +627,18 @@ const firebaseConfig = {
 };
 
 let db = null;
+let auth = null;
 let firebaseReady = false;
+let currentUser = null;
+let confirmationResult = null;
+let recaptchaVerifier = null;
+
 try {
     if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith('YOUR_')) {
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
+        auth = firebase.auth();
+        auth.languageCode = 'vi';
         firebaseReady = true;
         console.log('✅ Firebase connected:', firebaseConfig.projectId);
     } else {
@@ -432,6 +650,297 @@ try {
 
 let playerName = localStorage.getItem('playerName')
     || 'Player' + Math.floor(Math.random() * 9000 + 1000);
+
+// ============ CUSTOM PLAYER AVATAR (UPLOAD IMAGE) ============
+let playerAvatarDataUrl = localStorage.getItem('playerAvatar') || '';
+let playerAvatarImg = null;
+
+function applyPlayerAvatar(dataUrl) {
+    playerAvatarDataUrl = dataUrl || '';
+    const preview = document.getElementById('menu-avatar-preview');
+    const resetBtn = document.getElementById('reset-avatar-btn');
+    if (playerAvatarDataUrl) {
+        const img = new Image();
+        img.onload = () => { playerAvatarImg = img; };
+        img.onerror = () => { playerAvatarImg = null; };
+        img.src = playerAvatarDataUrl;
+        if (preview) preview.innerHTML = `<img src="${playerAvatarDataUrl}" alt="Avatar">`;
+        if (resetBtn) resetBtn.style.display = 'inline-block';
+    } else {
+        playerAvatarImg = null;
+        if (preview) preview.innerHTML = '🟦';
+        if (resetBtn) resetBtn.style.display = 'none';
+    }
+}
+
+function resetPlayerAvatar() {
+    localStorage.removeItem('playerAvatar');
+    applyPlayerAvatar('');
+    if (firebaseReady && currentUser) {
+        db.ref('users/' + currentUser.uid + '/avatar').remove().catch(() => {});
+    }
+}
+
+function bindAvatarUpload() {
+    const input = document.getElementById('avatar-file-input');
+    if (!input) return;
+    input.addEventListener('change', e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            alert('Vui lòng chọn tệp hình ảnh (PNG, JPG, GIF, WebP).');
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                // Resize ảnh về 128x128 để nhẹ bộ nhớ & lưu được vào localStorage / Firebase
+                const off = document.createElement('canvas');
+                off.width = 128;
+                off.height = 128;
+                const octx = off.getContext('2d');
+                const minSide = Math.min(tempImg.width, tempImg.height);
+                const sx = (tempImg.width - minSide) / 2;
+                const sy = (tempImg.height - minSide) / 2;
+                octx.drawImage(tempImg, sx, sy, minSide, minSide, 0, 0, 128, 128);
+                const compressed = off.toDataURL('image/png', 0.9);
+                try {
+                    localStorage.setItem('playerAvatar', compressed);
+                } catch (err) {
+                    console.warn('Không lưu được avatar vào localStorage:', err);
+                }
+                applyPlayerAvatar(compressed);
+                if (firebaseReady && currentUser) {
+                    db.ref('users/' + currentUser.uid + '/avatar').set(compressed).catch(() => {});
+                }
+            };
+            tempImg.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+        input.value = '';
+    });
+}
+
+// ============ FIREBASE AUTHENTICATION ============
+function showAuthMessage(msg, type = 'error') {
+    const el = document.getElementById('auth-message');
+    if (!el) return;
+    el.className = 'auth-msg ' + type;
+    el.textContent = msg;
+}
+function clearAuthMessage() {
+    const el = document.getElementById('auth-message');
+    if (!el) return;
+    el.className = 'auth-msg';
+    el.textContent = '';
+}
+function switchAuthTab(tabId, btn) {
+    clearAuthMessage();
+    document.querySelectorAll('#auth-modal .tab-content').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#auth-modal .tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+    if (tabId === 'auth-phone') initRecaptcha();
+}
+
+function formatAuthError(err) {
+    if (!err) return 'Đã xảy ra lỗi không xác định.';
+    const code = err.code || '';
+    const map = {
+        'auth/invalid-email': 'Địa chỉ Gmail/Email không hợp lệ.',
+        'auth/user-disabled': 'Tài khoản này đã bị vô hiệu hóa.',
+        'auth/user-not-found': 'Không tìm thấy tài khoản với email này. Hãy bấm ĐĂNG KÝ.',
+        'auth/wrong-password': 'Mật khẩu không chính xác.',
+        'auth/invalid-credential': 'Email hoặc mật khẩu không đúng.',
+        'auth/email-already-in-use': 'Gmail này đã được đăng ký. Hãy bấm ĐĂNG NHẬP.',
+        'auth/weak-password': 'Mật khẩu quá yếu (cần ít nhất 6 ký tự).',
+        'auth/popup-closed-by-user': 'Bạn đã đóng cửa sổ đăng nhập.',
+        'auth/cancelled-popup-request': 'Yêu cầu đăng nhập bị hủy.',
+        'auth/operation-not-allowed': 'Phương thức đăng nhập này chưa được bật trên Firebase Console.',
+        'auth/unauthorized-domain': 'Tên miền hiện tại chưa được thêm vào Authorized Domains trên Firebase.',
+        'auth/invalid-phone-number': 'Số điện thoại không hợp lệ (hãy nhập dạng +84... hoặc 0...).',
+        'auth/invalid-verification-code': 'Mã OTP không đúng, vui lòng kiểm tra lại.',
+        'auth/code-expired': 'Mã OTP đã hết hạn, hãy gửi lại mã mới.',
+        'auth/too-many-requests': 'Thao tác quá nhiều lần, vui lòng thử lại sau ít phút.'
+    };
+    return map[code] || (err.message || 'Lỗi xác thực.');
+}
+
+async function loginWithEmail() {
+    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
+    const email = document.getElementById('auth-email-input').value.trim();
+    const pass = document.getElementById('auth-pass-input').value;
+    if (!email || !pass) return showAuthMessage('Vui lòng nhập đầy đủ Gmail và mật khẩu.');
+    try {
+        clearAuthMessage();
+        await auth.signInWithEmailAndPassword(email, pass);
+        showAuthMessage('Đăng nhập thành công!', 'success');
+        setTimeout(() => hideModal('auth-modal'), 700);
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+    }
+}
+
+async function registerWithEmail() {
+    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
+    const email = document.getElementById('auth-email-input').value.trim();
+    const pass = document.getElementById('auth-pass-input').value;
+    if (!email || !pass) return showAuthMessage('Vui lòng nhập Gmail và mật khẩu (từ 6 ký tự).');
+    try {
+        clearAuthMessage();
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        const defaultName = email.split('@')[0].slice(0, 16);
+        await cred.user.updateProfile({ displayName: defaultName });
+        showAuthMessage('Đăng ký thành công! Đã tự động đăng nhập.', 'success');
+        setTimeout(() => hideModal('auth-modal'), 800);
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+    }
+}
+
+async function resetPasswordEmail() {
+    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
+    const email = document.getElementById('auth-email-input').value.trim();
+    if (!email) return showAuthMessage('Hãy nhập địa chỉ Gmail của bạn vào ô bên trên trước.');
+    try {
+        await auth.sendPasswordResetEmail(email);
+        showAuthMessage('Đã gửi email đặt lại mật khẩu tới ' + email, 'success');
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+    }
+}
+
+async function loginWithGoogle() {
+    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
+    try {
+        clearAuthMessage();
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await auth.signInWithPopup(provider);
+        showAuthMessage('Đăng nhập Google thành công!', 'success');
+        setTimeout(() => hideModal('auth-modal'), 700);
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+    }
+}
+
+function initRecaptcha() {
+    if (!firebaseReady || !auth || recaptchaVerifier) return;
+    try {
+        recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            size: 'normal',
+            callback: () => {}
+        });
+        recaptchaVerifier.render();
+    } catch (e) {
+        console.warn('Recaptcha init error:', e);
+    }
+}
+
+function normalizeVNPhone(raw) {
+    let p = raw.replace(/\s+/g, '');
+    if (p.startsWith('0')) p = '+84' + p.slice(1);
+    else if (!p.startsWith('+')) p = '+' + p;
+    return p;
+}
+
+async function sendPhoneOTP() {
+    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
+    const raw = document.getElementById('auth-phone-input').value.trim();
+    if (!raw) return showAuthMessage('Vui lòng nhập số điện thoại.');
+    const phone = normalizeVNPhone(raw);
+    try {
+        clearAuthMessage();
+        if (!recaptchaVerifier) initRecaptcha();
+        confirmationResult = await auth.signInWithPhoneNumber(phone, recaptchaVerifier);
+        document.getElementById('otp-verify-section').style.display = 'block';
+        showAuthMessage('Đã gửi mã OTP tới ' + phone + '. Vui lòng kiểm tra tin nhắn.', 'success');
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+        if (recaptchaVerifier) {
+            try { recaptchaVerifier.clear(); } catch (_) {}
+            recaptchaVerifier = null;
+            initRecaptcha();
+        }
+    }
+}
+
+async function verifyPhoneOTP() {
+    if (!confirmationResult) return showAuthMessage('Hãy bấm Gửi mã OTP trước.');
+    const code = document.getElementById('auth-otp-input').value.trim();
+    if (!code) return showAuthMessage('Vui lòng nhập mã OTP 6 số.');
+    try {
+        clearAuthMessage();
+        await confirmationResult.confirm(code);
+        showAuthMessage('Xác thực số điện thoại thành công!', 'success');
+        setTimeout(() => hideModal('auth-modal'), 700);
+    } catch (err) {
+        showAuthMessage(formatAuthError(err), 'error');
+    }
+}
+
+async function logoutUser() {
+    if (!firebaseReady || !auth) return;
+    try {
+        await auth.signOut();
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function updateAccountUI(user) {
+    currentUser = user || null;
+    const nameEl = document.getElementById('menu-user-name');
+    const subEl = document.getElementById('menu-user-provider');
+    const loginBtn = document.getElementById('open-auth-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const nameInput = document.getElementById('player-name-input');
+
+    if (user) {
+        const providerId = (user.providerData && user.providerData[0] && user.providerData[0].providerId) || 'firebase';
+        const providerLabel = providerId.includes('google') ? 'Google (Gmail)'
+            : providerId.includes('phone') ? 'Số điện thoại'
+            : 'Email / Gmail';
+
+        const display = user.displayName
+            || (user.email ? user.email.split('@')[0] : '')
+            || user.phoneNumber
+            || playerName;
+
+        playerName = display.slice(0, 16);
+        localStorage.setItem('playerName', playerName);
+        if (nameInput) nameInput.value = playerName;
+
+        nameEl.textContent = playerName;
+        subEl.textContent = `${providerLabel} • ${user.email || user.phoneNumber || 'Đã xác thực'}`;
+        loginBtn.textContent = 'Tài khoản';
+        logoutBtn.style.display = 'inline-block';
+
+        // Tải avatar đã lưu trên cloud nếu máy chưa có
+        if (db) {
+            db.ref('users/' + user.uid + '/avatar').once('value').then(snap => {
+                const cloudAvatar = snap.val();
+                if (cloudAvatar && !playerAvatarDataUrl) {
+                    try { localStorage.setItem('playerAvatar', cloudAvatar); } catch (_) {}
+                    applyPlayerAvatar(cloudAvatar);
+                } else if (!cloudAvatar && !playerAvatarDataUrl && user.photoURL) {
+                    applyPlayerAvatar(user.photoURL);
+                }
+            }).catch(() => {});
+        }
+    } else {
+        nameEl.textContent = playerName;
+        subEl.textContent = 'Chưa đăng nhập • Chơi chế độ Khách';
+        loginBtn.textContent = 'Đăng nhập';
+        logoutBtn.style.display = 'none';
+    }
+}
+
+if (firebaseReady && auth) {
+    auth.onAuthStateChanged(user => {
+        updateAccountUI(user);
+    });
+}
 
 // ============ AUDIO ============
 const bgMusic = document.getElementById('bg-music');
@@ -589,7 +1098,11 @@ function mergeLeaderboardEntries(mode, remoteList, localList) {
 }
 
 async function addToLeaderboard(mode, entry) {
-    const data = { ...entry, name: playerName };
+    const data = {
+        ...entry,
+        name: playerName,
+        uid: currentUser ? currentUser.uid : null
+    };
     if (!leaderboard[mode]) leaderboard[mode] = [];
     leaderboard[mode] = sortAndTrimLeaderboard(mode, [...leaderboard[mode], data]);
     localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
@@ -680,11 +1193,11 @@ function switchTab(tabId, btn) {
 function showModal(id) {
     if (id === 'leaderboard-modal') renderLeaderboard();
     if (id === 'achievements-modal') renderAchievements();
+    if (id === 'auth-modal') clearAuthMessage();
     document.getElementById(id).style.display = 'block';
 }
 function hideModal(id) { document.getElementById(id).style.display = 'none'; }
 
-// Bind ô nhập tên
 function bindNameInput() {
     const el = document.getElementById('player-name-input');
     if (!el) return;
@@ -694,6 +1207,9 @@ function bindNameInput() {
         const v = trimmed || 'Ẩn danh';
         playerName = v;
         localStorage.setItem('playerName', v);
+        if (!currentUser) {
+            document.getElementById('menu-user-name').textContent = playerName;
+        }
     });
 }
 
@@ -710,7 +1226,8 @@ function isInGame() {
     return document.getElementById('menu').style.display === 'none' &&
            document.getElementById('game-over-ui').style.display !== 'block' &&
            document.getElementById('leaderboard-modal').style.display !== 'block' &&
-           document.getElementById('achievements-modal').style.display !== 'block';
+           document.getElementById('achievements-modal').style.display !== 'block' &&
+           document.getElementById('auth-modal').style.display !== 'block';
 }
 function togglePause() {
     if (!isInGame()) return;
@@ -1059,6 +1576,7 @@ function startGame(mode) {
     document.getElementById('pause-ui').style.display = 'none';
     document.getElementById('leaderboard-modal').style.display = 'none';
     document.getElementById('achievements-modal').style.display = 'none';
+    document.getElementById('auth-modal').style.display = 'none';
     document.getElementById('ui').style.display = 'block';
     document.querySelector('.controls').style.display = 'block';
     pauseBtn.style.display = 'block';
@@ -1132,11 +1650,16 @@ function switchWeapon(idx) {
 
 // ============ INPUT ============
 addEventListener('keydown', e => {
+    // Bỏ qua phím tắt game khi đang gõ vào ô input
+    if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        if (e.key === 'Escape') document.activeElement.blur();
+        return;
+    }
     const key = e.key.toLowerCase();
     if (key === 'p') { togglePause(); return; }
     if (key === 'r' && !isPaused) { retryGame(); return; }
     if (key === 'escape') {
-        for (const id of ['leaderboard-modal', 'achievements-modal']) {
+        for (const id of ['leaderboard-modal', 'achievements-modal', 'auth-modal']) {
             if (document.getElementById(id).style.display === 'block') { hideModal(id); return; }
         }
         if (document.getElementById('pause-ui').style.display === 'flex') resumeGame();
@@ -1830,9 +2353,17 @@ function draw() {
     ctx.fillStyle = '#e74c3c';
     ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
 
+    // Vẽ nhân vật người chơi (hình ảnh tải lên hoặc ô vuông xanh mặc định)
     if (p1.invuln > 0 && Math.floor(p1.invuln / 4) % 2 === 0) ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#3498db';
-    ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+    if (playerAvatarImg && playerAvatarImg.complete && playerAvatarImg.naturalWidth > 0) {
+        ctx.drawImage(playerAvatarImg, p1.x, p1.y, p1.w, p1.h);
+        ctx.strokeStyle = '#ffd700';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(p1.x, p1.y, p1.w, p1.h);
+    } else {
+        ctx.fillStyle = '#3498db';
+        ctx.fillRect(p1.x, p1.y, p1.w, p1.h);
+    }
     ctx.globalAlpha = 1;
 
     damagePopups.forEach(p => {
@@ -1891,6 +2422,9 @@ function gameLoop(timestamp) {
 updateBestDisplay();
 initGameVars('normal');
 bindNameInput();
+bindAvatarUpload();
+applyPlayerAvatar(playerAvatarDataUrl);
+updateAccountUI(null);
 requestAnimationFrame(gameLoop);
 </script>
 </body>
