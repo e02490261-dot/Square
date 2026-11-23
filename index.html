@@ -398,6 +398,20 @@
         .ach-item .ach-info { flex: 1; text-align: left; }
         .ach-item .ach-info b { display: block; color: #ffd700; font-size: 13px; }
         .ach-item .ach-info span { font-size: 11px; color: #aaa; }
+
+        /* ====== LEGAL LINKS ====== */
+        .legal-note {
+            font-size: 11px;
+            color: #999;
+            margin-top: 12px;
+            line-height: 1.7;
+        }
+        .legal-note a {
+            color: #ffd700;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .legal-note a:hover { filter: brightness(1.25); }
     </style>
 </head>
 <body>
@@ -454,6 +468,12 @@
         <p style="margin:4px 0;">WASD: Di chuyển | Chuột trái: Bắn | Chuột phải: Dịch chuyển / Kích nổ</p>
         <p style="margin:4px 0;"><span class="key">0-8</span> Đổi vũ khí | <span class="key">P</span> Tạm dừng | <span class="key">R</span> Chơi lại | <span class="key">ESC</span> Menu</p>
     </div>
+
+    <p class="legal-note" style="margin-top:16px;">
+        <a href="privacy.html#terms" target="_blank" rel="noopener">Điều khoản sử dụng</a> •
+        <a href="privacy.html#privacy" target="_blank" rel="noopener">Chính sách quyền riêng tư</a> •
+        <a href="privacy.html#data-deletion" target="_blank" rel="noopener">Xoá dữ liệu</a>
+    </p>
 </div>
 
 <!-- MODAL ĐĂNG NHẬP / ĐĂNG KÝ -->
@@ -498,6 +518,15 @@
     </div>
 
     <div id="auth-message" class="auth-msg"></div>
+
+    <p class="legal-note">
+        Bằng việc đăng nhập hoặc đăng ký, bạn đồng ý với
+        <a href="privacy.html#terms" target="_blank" rel="noopener">Điều khoản sử dụng</a>
+        và
+        <a href="privacy.html#privacy" target="_blank" rel="noopener">Chính sách quyền riêng tư</a>
+        của trò chơi.
+    </p>
+
     <button class="btn menu-btn" onclick="hideModal('auth-modal')" style="margin-top:16px;">ĐÓNG</button>
 </div>
 
@@ -1195,7 +1224,9 @@ async function renderLeaderboard() {
         el.innerHTML = list.map((entry, i) => {
             const cls = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
             const rank = ['🥇','🥈','🥉'][i] || ('#' + (i + 1));
-            const val = mode === 'endless' ? `Wave ${entry.wave}` : `${entry.time}s`;
+            const val = mode === 'endless'
+                ? `Wave ${escapeHtml(Number(entry.wave) || 0)}`
+                : `${escapeHtml(Number(entry.time) || 0)}s`;
             const date = entry.date ? new Date(entry.date).toLocaleDateString('vi-VN') : '';
             const name = escapeHtml(entry.name || 'Ẩn danh');
             return `<div class="lb-row ${cls}">
@@ -1305,7 +1336,6 @@ function retryGame() {
     bgMusic.currentTime = 0;
     startGame(currentMode);
 }
-
 // ============ GAME CORE ============
 const c = document.getElementById('game');
 const ctx = c.getContext('2d');
@@ -2468,4 +2498,3 @@ requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
-Processed and analyzed in code
