@@ -1199,47 +1199,99 @@ function renderAchievements() {
     }
 }
 
-// ============ LEADERBOARD ============
+// ============ LEADERBOARD (1 ENTRY PER ACCOUNT PER MODE) ============
 let leaderboard = JSON.parse(localStorage.getItem('leaderboard') ||
     '{"easy":[],"normal":[],"hard":[],"insane":[],"endless":[]}');
 
+function getPlayerIdentityKey(entry = null) {
+    if (entry && entry.accountKey) return String(entry.accountKey);
+    if (entry && entry.uid) return 'uid_' + String(entry.uid);
+    if (!entry && currentUser && currentUser.uid) return 'uid_' + String(currentUser.uid);
+    if (!entry && localSession && localSession.name) {
+        return 'local_' + String(localSession.name).trim().toLowerCase();
+    }
+    const rawName = (entry && entry.name) || playerName || 'guest';
+    return 'guest_' + String(rawName).trim().toLowerCase();
+}
+
+function toSafeFirebaseKey(key) {
+    return String(key || 'player').replace(/[.#$/\[\]]/g, '_').slice(0, 120);
+}
+
+function isBetterScore(mode, candidate, existing) {
+    if (!existing) return true;
+    if (mode === 'endless') {
+        const cWave = Number(candidate.wave) || 0;
+        const eWave = Number(existing.wave) || 0;
+        if (cWave !== eWave) return cWave > eWave;
+        return (Number(candidate.date) || 0) >= (Number(existing.date) || 0);
+    }
+    const cTime = Number(candidate.time);
+    const eTime = Number(existing.time);
+    if (!Number.isFinite(cTime)) return false;
+    if (!Number.isFinite(eTime)) return true;
+    if (cTime !== eTime) return cTime < eTime;
+    return (Number(candidate.date) || 0) >= (Number(existing.date) || 0);
+}
+
+function dedupeLeaderboardByAccount(mode, list) {
+    const bestByKey = new Map();
+    for (const item of (Array.isArray(list) ? list : [])) {
+        if (!item) continue;
+        const key = getPlayerIdentityKey(item);
+        const normalized = {
+            ...item,
+            accountKey: key,
+            name: String(item.name || 'Ẩn danh').trim().slice(0, 16) || 'Ẩn danh'
+        };
+        const currentBest = bestByKey.get(key);
+        if (isBetterScore(mode, normalized, currentBest)) {
+            bestByKey.set(key, normalized);
+        }
+    }
+    return Array.from(bestByKey.values());
+}
+
 function sortAndTrimLeaderboard(mode, list) {
-    const clean = (Array.isArray(list) ? list : []).filter(Boolean);
-    clean.sort((a, b) => {
+    const deduped = dedupeLeaderboardByAccount(mode, list);
+    deduped.sort((a, b) => {
         if (mode === 'endless') return (Number(b.wave) || 0) - (Number(a.wave) || 0);
         return (Number(a.time) || Infinity) - (Number(b.time) || Infinity);
     });
-    return clean.slice(0, 100);
+    return deduped.slice(0, 100);
 }
 
 function mergeLeaderboardEntries(mode, remoteList, localList) {
-    const seen = new Set();
-    const merged = [];
-    for (const item of [...(remoteList || []), ...(localList || [])]) {
-        if (!item) continue;
-        const key = `${item.name || ''}|${mode === 'endless' ? item.wave : item.time}|${item.date || ''}`;
-        if (!seen.has(key)) {
-            seen.add(key);
-            merged.push(item);
-        }
-    }
-    return sortAndTrimLeaderboard(mode, merged);
+    return sortAndTrimLeaderboard(mode, [...(remoteList || []), ...(localList || [])]);
 }
 
 async function addToLeaderboard(mode, entry) {
+    const accountKey = getPlayerIdentityKey();
+    const safeKey = toSafeFirebaseKey(accountKey);
     const data = {
         ...entry,
         name: playerName,
-        uid: currentUser ? currentUser.uid : null
+        uid: currentUser ? currentUser.uid : null,
+        accountKey
     };
-    if (!leaderboard[mode]) leaderboard[mode] = [];
-    leaderboard[mode] = sortAndTrimLeaderboard(mode, [...leaderboard[mode], data]);
+
+    const existingList = leaderboard[mode] || [];
+    const existingRecord = existingList.find(item => getPlayerIdentityKey(item) === accountKey);
+    const bestRecord = isBetterScore(mode, data, existingRecord) ? data : existingRecord;
+
+    leaderboard[mode] = sortAndTrimLeaderboard(mode, [...existingList, bestRecord]);
     localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
 
     if (firebaseReady) {
         try {
-            await db.ref('leaderboards/' + mode).push(data);
-            console.log('✅ Pushed to Firebase:', data);
+            const entryRef = db.ref('leaderboards/' + mode + '/entries/' + safeKey);
+            const snap = await entryRef.once('value');
+            const remoteRecord = snap.val();
+            const finalRecord = isBetterScore(mode, data, remoteRecord) ? data : remoteRecord;
+            if (finalRecord) {
+                await entryRef.set(finalRecord);
+            }
+            console.log('✅ Saved unique leaderboard record to Firebase:', finalRecord);
         } catch (e) {
             console.warn('⚠️ Firebase push failed:', e);
         }
@@ -1267,10 +1319,19 @@ async function renderLeaderboard() {
         if (firebaseReady) {
             try {
                 const snap = await db.ref('leaderboards/' + mode).once('value');
-                snap.forEach(child => {
-                    const val = child.val();
-                    if (val) remoteList.push(val);
-                });
+                const modeData = snap.val();
+                if (modeData && typeof modeData === 'object') {
+                    if (modeData.entries && typeof modeData.entries === 'object') {
+                        Object.values(modeData.entries).forEach(val => {
+                            if (val) remoteList.push(val);
+                        });
+                    }
+                    Object.entries(modeData).forEach(([k, val]) => {
+                        if (k !== 'entries' && val && typeof val === 'object') {
+                            remoteList.push(val);
+                        }
+                    });
+                }
             } catch (e) {
                 anyFirebaseError = true;
                 console.warn('⚠️ Firebase read failed (' + mode + '):', e);
@@ -1280,6 +1341,9 @@ async function renderLeaderboard() {
         const list = firebaseReady && !anyFirebaseError
             ? sortAndTrimLeaderboard(mode, remoteList)
             : mergeLeaderboardEntries(mode, remoteList, localList);
+
+        leaderboard[mode] = list;
+        localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
 
         if (list.length === 0) {
             el.innerHTML = '<p style="color:#666; text-align:center; padding:20px;">Chưa có ai. Hãy là người đầu tiên!</p>';
