@@ -422,7 +422,69 @@
 </head>
 <body>
 
-<div id="menu" class="overlay">
+<!-- MÀN HÌNH ĐĂNG NHẬP / ĐĂNG KÝ NGAY KHI VÀO GAME -->
+<div id="auth-modal" class="overlay" style="display:block">
+    <h1 style="color:#ffd700; margin:0 0 6px; letter-spacing:2px; font-size:26px;">SQUARE</h1>
+    <p style="color:#aaa; font-size:12px; margin:0 0 16px;">Đăng nhập hoặc đăng ký để lưu thành tích & xếp hạng</p>
+
+    <div class="tab-bar">
+        <button class="tab active" onclick="switchAuthTab('auth-email', this)">ĐĂNG NHẬP</button>
+        <button class="tab" onclick="switchAuthTab('auth-register', this)">ĐĂNG KÝ</button>
+        <button class="tab" onclick="switchAuthTab('auth-social', this)">GOOGLE</button>
+    </div>
+
+    <!-- Tab Đăng nhập (Tên / Gmail + Mật khẩu) -->
+    <div id="auth-email" class="tab-content active">
+        <label class="auth-field-label" for="auth-login-id">Tên tài khoản hoặc Gmail</label>
+        <input id="auth-login-id" class="auth-input" type="text" autocomplete="username" placeholder="Nhập tên tài khoản hoặc Gmail">
+        <label class="auth-field-label" for="auth-pass-input">Mật khẩu</label>
+        <input id="auth-pass-input" class="auth-input" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
+        <button class="btn replay-btn" style="margin-top:10px;" onclick="loginWithCredentials()">ĐĂNG NHẬP & VÀO GAME</button>
+        <button class="small-action-btn secondary" style="width:100%; margin-top:6px;" onclick="resetPasswordEmail()">Quên mật khẩu? Gửi link đặt lại về Gmail</button>
+    </div>
+
+    <!-- Tab Đăng ký: Tên, Mật khẩu, Ngày tháng năm sinh, Gmail (không bắt buộc) -->
+    <div id="auth-register" class="tab-content">
+        <label class="auth-field-label" for="reg-name-input">Tên người chơi *</label>
+        <input id="reg-name-input" class="auth-input" type="text" maxlength="16" autocomplete="name" placeholder="Nhập tên (tối đa 16 ký tự)">
+
+        <label class="auth-field-label" for="reg-pass-input">Mật khẩu *</label>
+        <input id="reg-pass-input" class="auth-input" type="password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
+
+        <label class="auth-field-label" for="reg-dob-input">Ngày tháng năm sinh *</label>
+        <input id="reg-dob-input" class="auth-input" type="date" max="2026-11-25">
+
+        <label class="auth-field-label" for="reg-email-input">Gmail (không bắt buộc)</label>
+        <input id="reg-email-input" class="auth-input" type="email" autocomplete="email" placeholder="ten@gmail.com (có thể bỏ trống)">
+
+        <button class="btn normal" style="margin-top:10px;" onclick="registerCustomAccount()">HOÀN TẤT ĐĂNG KÝ</button>
+    </div>
+
+    <!-- Tab Google -->
+    <div id="auth-social" class="tab-content">
+        <button class="social-btn google-btn" onclick="loginWithGoogle()">
+            <span>🔴</span> Tiếp tục với Google (Gmail)
+        </button>
+        <p style="font-size:11px; color:#999; margin-top:8px;">
+            * Cần bật Google Sign-In trong Firebase Console và mở trang qua domain đã cấp phép (hoặc localhost).
+        </p>
+    </div>
+
+    <div id="auth-message" class="auth-msg"></div>
+
+    <button class="btn menu-btn" onclick="enterAsGuest()" style="margin-top:14px;">🎮 CHƠI CHẾ ĐỘ KHÁCH (BỎ QUA)</button>
+
+    <p class="legal-note">
+        Bằng việc đăng nhập hoặc đăng ký, bạn đồng ý với
+        <a href="privacy.html#terms" target="_blank" rel="noopener">Điều khoản sử dụng</a>
+        và
+        <a href="privacy.html#privacy" target="_blank" rel="noopener">Chính sách quyền riêng tư</a>
+        của trò chơi.
+    </p>
+</div>
+
+<!-- MENU CHÍNH (ẨN BAN ĐẦU, HIỆN SAU KHI ĐĂNG NHẬP HOẶC CHỌN CHƠI KHÁCH) -->
+<div id="menu" class="overlay" style="display:none">
     <h1 style="color:#ffd700; margin:0 0 16px; letter-spacing:2px;">CHIẾN TRƯỜNG</h1>
 
     <!-- Thanh tài khoản & Avatar nhân vật -->
@@ -435,8 +497,8 @@
             </div>
         </div>
         <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button class="small-action-btn" id="open-auth-btn" onclick="showModal('auth-modal')">Đăng nhập</button>
-            <button class="small-action-btn secondary" id="logout-btn" onclick="logoutUser()" style="display:none;">Thoát</button>
+            <button class="small-action-btn" id="open-auth-btn" onclick="openAuthScreen()">Đăng nhập</button>
+            <button class="small-action-btn secondary" id="logout-btn" onclick="logoutUser()" style="display:none;">Đăng xuất</button>
         </div>
     </div>
 
@@ -480,65 +542,6 @@
         <a href="privacy.html#privacy" target="_blank" rel="noopener">Chính sách quyền riêng tư</a> •
         <a href="privacy.html#data-deletion" target="_blank" rel="noopener">Xoá dữ liệu</a>
     </p>
-</div>
-
-<!-- MODAL ĐĂNG NHẬP / ĐĂNG KÝ -->
-<div id="auth-modal" class="overlay" style="display:none">
-    <h2 style="color:#ffd700; margin-top:0;">🔐 TÀI KHOẢN NGƯỜI CHƠI</h2>
-    <div class="tab-bar">
-        <button class="tab active" onclick="switchAuthTab('auth-email', this)">ĐĂNG NHẬP</button>
-        <button class="tab" onclick="switchAuthTab('auth-register', this)">ĐĂNG KÝ</button>
-        <button class="tab" onclick="switchAuthTab('auth-social', this)">GOOGLE</button>
-    </div>
-
-    <!-- Tab Đăng nhập (Tên / Gmail + Mật khẩu) -->
-    <div id="auth-email" class="tab-content active">
-        <label class="auth-field-label" for="auth-login-id">Tên tài khoản hoặc Gmail</label>
-        <input id="auth-login-id" class="auth-input" type="text" autocomplete="username" placeholder="Nhập tên tài khoản hoặc Gmail">
-        <label class="auth-field-label" for="auth-pass-input">Mật khẩu</label>
-        <input id="auth-pass-input" class="auth-input" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
-        <button class="btn replay-btn" style="margin-top:10px;" onclick="loginWithCredentials()">ĐĂNG NHẬP</button>
-        <button class="small-action-btn secondary" style="width:100%; margin-top:6px;" onclick="resetPasswordEmail()">Quên mật khẩu? Gửi link đặt lại về Gmail</button>
-    </div>
-
-    <!-- Tab Đăng ký: Tên, Mật khẩu, Ngày tháng năm sinh, Gmail (không bắt buộc) -->
-    <div id="auth-register" class="tab-content">
-        <label class="auth-field-label" for="reg-name-input">Tên người chơi *</label>
-        <input id="reg-name-input" class="auth-input" type="text" maxlength="16" autocomplete="name" placeholder="Nhập tên (tối đa 16 ký tự)">
-
-        <label class="auth-field-label" for="reg-pass-input">Mật khẩu *</label>
-        <input id="reg-pass-input" class="auth-input" type="password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
-
-        <label class="auth-field-label" for="reg-dob-input">Ngày tháng năm sinh *</label>
-        <input id="reg-dob-input" class="auth-input" type="date" max="2026-11-23">
-
-        <label class="auth-field-label" for="reg-email-input">Gmail (không bắt buộc)</label>
-        <input id="reg-email-input" class="auth-input" type="email" autocomplete="email" placeholder="ten@gmail.com (có thể bỏ trống)">
-
-        <button class="btn normal" style="margin-top:10px;" onclick="registerCustomAccount()">HOÀN TẤT ĐĂNG KÝ</button>
-    </div>
-
-    <!-- Tab Google -->
-    <div id="auth-social" class="tab-content">
-        <button class="social-btn google-btn" onclick="loginWithGoogle()">
-            <span>🔴</span> Tiếp tục với Google (Gmail)
-        </button>
-        <p style="font-size:11px; color:#999; margin-top:8px;">
-            * Cần bật Google Sign-In trong Firebase Console và mở trang qua domain đã cấp phép (hoặc localhost).
-        </p>
-    </div>
-
-    <div id="auth-message" class="auth-msg"></div>
-
-    <p class="legal-note">
-        Bằng việc đăng nhập hoặc đăng ký, bạn đồng ý với
-        <a href="privacy.html#terms" target="_blank" rel="noopener">Điều khoản sử dụng</a>
-        và
-        <a href="privacy.html#privacy" target="_blank" rel="noopener">Chính sách quyền riêng tư</a>
-        của trò chơi.
-    </p>
-
-    <button class="btn menu-btn" onclick="hideModal('auth-modal')" style="margin-top:16px;">ĐÓNG</button>
 </div>
 
 <div id="leaderboard-modal" class="overlay" style="display:none">
@@ -690,6 +693,24 @@ try {
 let playerName = localStorage.getItem('playerName')
     || 'Player' + Math.floor(Math.random() * 9000 + 1000);
 
+// ============ CHUYỂN ĐỔI MÀN HÌNH ĐĂNG NHẬP <-> MENU GAME ============
+function enterMainMenu() {
+    clearAuthMessage();
+    document.getElementById('auth-modal').style.display = 'none';
+    document.getElementById('menu').style.display = 'block';
+    updateBestDisplay();
+}
+
+function openAuthScreen() {
+    clearAuthMessage();
+    document.getElementById('menu').style.display = 'none';
+    document.getElementById('auth-modal').style.display = 'block';
+}
+
+function enterAsGuest() {
+    enterMainMenu();
+}
+
 // ============ CUSTOM PLAYER AVATAR (UPLOAD IMAGE) ============
 let playerAvatarDataUrl = localStorage.getItem('playerAvatar') || '';
 let playerAvatarImg = null;
@@ -734,7 +755,6 @@ function bindAvatarUpload() {
         reader.onload = ev => {
             const tempImg = new Image();
             tempImg.onload = () => {
-                // Resize ảnh về 128x128 để nhẹ bộ nhớ & lưu được vào localStorage / Firebase
                 const off = document.createElement('canvas');
                 off.width = 128;
                 off.height = 128;
@@ -862,8 +882,8 @@ async function loginWithCredentials() {
         }
         clearAuthMessage();
         setLocalSession(matchedLocal);
-        showAuthMessage('Đăng nhập thành công!', 'success');
-        setTimeout(() => hideModal('auth-modal'), 700);
+        showAuthMessage('Đăng nhập thành công! Đang vào game...', 'success');
+        setTimeout(() => enterMainMenu(), 600);
         return;
     }
 
@@ -872,8 +892,8 @@ async function loginWithCredentials() {
             clearAuthMessage();
             setLocalSession(null);
             await auth.signInWithEmailAndPassword(identifier, pass);
-            showAuthMessage('Đăng nhập thành công!', 'success');
-            setTimeout(() => hideModal('auth-modal'), 700);
+            showAuthMessage('Đăng nhập thành công! Đang vào game...', 'success');
+            setTimeout(() => enterMainMenu(), 600);
         } catch (err) {
             showAuthMessage(formatAuthError(err), 'error');
         }
@@ -966,8 +986,8 @@ async function registerCustomAccount() {
     passInput.value = '';
     dobInput.value = '';
     emailInput.value = '';
-    showAuthMessage('Đăng ký thành công! Đã tự động đăng nhập.', 'success');
-    setTimeout(() => hideModal('auth-modal'), 800);
+    showAuthMessage('Đăng ký thành công! Đang vào game...', 'success');
+    setTimeout(() => enterMainMenu(), 700);
 }
 
 async function resetPasswordEmail() {
@@ -991,8 +1011,8 @@ async function loginWithGoogle() {
         setLocalSession(null);
         const provider = new firebase.auth.GoogleAuthProvider();
         await auth.signInWithPopup(provider);
-        showAuthMessage('Đăng nhập Google thành công!', 'success');
-        setTimeout(() => hideModal('auth-modal'), 700);
+        showAuthMessage('Đăng nhập Google thành công! Đang vào game...', 'success');
+        setTimeout(() => enterMainMenu(), 600);
     } catch (err) {
         showAuthMessage(formatAuthError(err), 'error');
     }
@@ -1007,6 +1027,8 @@ async function logoutUser() {
             console.error(e);
         }
     }
+    // Quay về màn hình đăng nhập ngay khi đăng xuất
+    openAuthScreen();
 }
 
 function updateAccountUI(user) {
@@ -1034,7 +1056,7 @@ function updateAccountUI(user) {
 
         nameEl.textContent = playerName;
         subEl.textContent = `${providerLabel} • ${user.email || user.phoneNumber || 'Đã xác thực'}`;
-        loginBtn.textContent = 'Tài khoản';
+        loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
 
         if (db) {
@@ -1057,19 +1079,29 @@ function updateAccountUI(user) {
         const gmailText = localSession.email ? ` • ${localSession.email}` : ' • Không dùng Gmail';
         nameEl.textContent = playerName;
         subEl.textContent = `${dobText}${gmailText}`;
-        loginBtn.textContent = 'Tài khoản';
+        loginBtn.style.display = 'none';
         logoutBtn.style.display = 'inline-block';
     } else {
         nameEl.textContent = playerName;
         subEl.textContent = 'Chưa đăng nhập • Chơi chế độ Khách';
+        loginBtn.style.display = 'inline-block';
         loginBtn.textContent = 'Đăng nhập';
         logoutBtn.style.display = 'none';
     }
 }
 
+// Nếu đã đăng nhập từ phiên trước (Firebase hoặc localSession), tự động vào thẳng Menu chính
+if (localSession) {
+    updateAccountUI(null);
+    enterMainMenu();
+}
+
 if (firebaseReady && auth) {
     auth.onAuthStateChanged(user => {
         updateAccountUI(user);
+        if (user && isPaused && document.getElementById('ui').style.display === 'none') {
+            enterMainMenu();
+        }
     });
 }
 
@@ -1205,12 +1237,10 @@ function renderAchievements() {
 let leaderboard = JSON.parse(localStorage.getItem('leaderboard') ||
     '{"easy":[],"normal":[],"hard":[],"insane":[],"endless":[]}');
 
-// Khoá định danh: 1 người chơi = 1 dòng duy nhất trên BXH ở mỗi chế độ
 function normalizeNameKey(name) {
     return String(name || '').trim().toLowerCase()
         .replace(/[.#$\[\]\/\s]+/g, '_').slice(0, 40) || 'an_danh';
 }
-// Đã đăng nhập Firebase -> dùng uid (không đổi được). Khách / tài khoản trên máy -> dùng tên.
 function getPlayerKey() {
     if (currentUser && currentUser.uid) return 'u_' + currentUser.uid;
     return 'n_' + normalizeNameKey(playerName);
@@ -1222,7 +1252,6 @@ function entryKey(entry) {
 function scoreValue(mode, e) {
     return mode === 'endless' ? (Number(e.wave) || 0) : (Number(e.time) || Infinity);
 }
-// a có tốt hơn b không? (endless: wave cao hơn; còn lại: thời gian ngắn hơn)
 function isBetterScore(mode, a, b) {
     if (!b) return true;
     return mode === 'endless'
@@ -1231,7 +1260,6 @@ function isBetterScore(mode, a, b) {
 }
 
 function sortAndTrimLeaderboard(mode, list) {
-    // Mỗi người chỉ giữ 1 điểm tốt nhất (kể cả dữ liệu cũ bị trùng)
     const best = new Map();
     (Array.isArray(list) ? list : []).filter(Boolean).forEach(item => {
         const k = entryKey(item);
@@ -1254,14 +1282,12 @@ async function addToLeaderboard(mode, entry) {
     const data = { ...entry, name: playerName };
     if (currentUser && currentUser.uid) data.uid = currentUser.uid;
 
-    // Lưu trên máy: chỉ giữ điểm tốt nhất của mỗi người
     if (!leaderboard[mode]) leaderboard[mode] = [];
     leaderboard[mode] = sortAndTrimLeaderboard(mode, [...leaderboard[mode], data]);
     localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
 
     if (firebaseReady) {
         try {
-            // Ghi vào 1 vị trí cố định của người chơi, chỉ ghi đè nếu điểm mới tốt hơn
             const ref = db.ref('leaderboards/' + mode + '/' + getPlayerKey());
             await ref.transaction(current => isBetterScore(mode, data, current) ? data : undefined);
             console.log('✅ Đã cập nhật BXH Firebase:', data);
@@ -1374,6 +1400,7 @@ function bindNameInput() {
 function updatePlayingClass() {
     const playing = !isPaused &&
                     document.getElementById('menu').style.display === 'none' &&
+                    document.getElementById('auth-modal').style.display === 'none' &&
                     document.getElementById('game-over-ui').style.display !== 'block';
     document.body.classList.toggle('playing', playing);
 }
@@ -1415,6 +1442,7 @@ function backToMenu() {
     isPaused = true; pauseStart = 0;
     document.getElementById('game-over-ui').style.display = 'none';
     document.getElementById('pause-ui').style.display = 'none';
+    document.getElementById('auth-modal').style.display = 'none';
     document.getElementById('menu').style.display = 'block';
     document.getElementById('ui').style.display = 'none';
     document.querySelector('.controls').style.display = 'none';
@@ -1815,12 +1843,16 @@ addEventListener('keydown', e => {
     if (key === 'p') { togglePause(); return; }
     if (key === 'r' && !isPaused) { retryGame(); return; }
     if (key === 'escape') {
-        for (const id of ['leaderboard-modal', 'achievements-modal', 'auth-modal']) {
+        for (const id of ['leaderboard-modal', 'achievements-modal']) {
             if (document.getElementById(id).style.display === 'block') { hideModal(id); return; }
+        }
+        if (document.getElementById('auth-modal').style.display === 'block') {
+            enterAsGuest();
+            return;
         }
         if (document.getElementById('pause-ui').style.display === 'flex') resumeGame();
         else if (!isPaused) pauseGame();
-        else backToMenu();
+        else if (document.getElementById('menu').style.display === 'none') backToMenu();
         return;
     }
     if (/^[0-8]$/.test(e.key) && !isPaused) switchWeapon(parseInt(e.key));
@@ -2583,7 +2615,7 @@ initGameVars('normal');
 bindNameInput();
 bindAvatarUpload();
 applyPlayerAvatar(playerAvatarDataUrl);
-updateAccountUI(null);
+if (!localSession) updateAccountUI(null);
 requestAnimationFrame(gameLoop);
 </script>
 </body>
