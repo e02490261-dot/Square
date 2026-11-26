@@ -440,24 +440,24 @@
         <label class="auth-field-label" for="auth-pass-input">Mật khẩu</label>
         <input id="auth-pass-input" class="auth-input" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu">
         <button class="btn replay-btn" style="margin-top:10px;" onclick="loginWithCredentials()">ĐĂNG NHẬP & VÀO GAME</button>
-        <button class="small-action-btn secondary" style="width:100%; margin-top:6px;" onclick="resetPasswordEmail()">Quên mật khẩu? Gửi link đặt lại về Gmail</button>
+        <button class="small-action-btn secondary" id="reset-pass-btn" style="width:100%; margin-top:6px;" onclick="resetPasswordEmail()">Quên mật khẩu? Gửi link đặt lại về Gmail</button>
     </div>
 
     <!-- Tab Đăng ký: Tên, Mật khẩu, Ngày tháng năm sinh, Gmail (không bắt buộc) -->
     <div id="auth-register" class="tab-content">
-        <label class="auth-field-label" for="reg-name-input">Tên người chơi *</label>
-        <input id="reg-name-input" class="auth-input" type="text" maxlength="16" autocomplete="name" placeholder="Nhập tên (tối đa 16 ký tự)">
+        <label class="auth-field-label" for="reg-name-input">Tên người chơi * (không trùng tên)</label>
+        <input id="reg-name-input" class="auth-input" type="text" maxlength="16" autocomplete="name" placeholder="Nhập tên duy nhất (tối đa 16 ký tự)">
 
         <label class="auth-field-label" for="reg-pass-input">Mật khẩu *</label>
         <input id="reg-pass-input" class="auth-input" type="password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự">
 
         <label class="auth-field-label" for="reg-dob-input">Ngày tháng năm sinh *</label>
-        <input id="reg-dob-input" class="auth-input" type="date" max="2026-11-25">
+        <input id="reg-dob-input" class="auth-input" type="date" max="2026-11-26">
 
-        <label class="auth-field-label" for="reg-email-input">Gmail (không bắt buộc)</label>
+        <label class="auth-field-label" for="reg-email-input">Gmail (khuyên dùng để khôi phục mật khẩu)</label>
         <input id="reg-email-input" class="auth-input" type="email" autocomplete="email" placeholder="ten@gmail.com (có thể bỏ trống)">
 
-        <button class="btn normal" style="margin-top:10px;" onclick="registerCustomAccount()">HOÀN TẤT ĐĂNG KÝ</button>
+        <button class="btn normal" id="register-submit-btn" style="margin-top:10px;" onclick="registerCustomAccount()">HOÀN TẤT ĐĂNG KÝ</button>
     </div>
 
     <!-- Tab Google -->
@@ -509,7 +509,7 @@
     <button class="btn endless" onclick="startGame('endless')">♾️ VÔ TẬN <span id="best-endless" class="best-txt"></span></button>
     
     <div style="margin-top:14px; text-align:left;">
-        <label for="player-name-input" style="color:#aaa; font-size:12px;">Tên hiển thị trên BXH:</label>
+        <label for="player-name-input" style="color:#aaa; font-size:12px;">Tên hiển thị trên BXH (không trùng tên):</label>
         <input id="player-name-input" type="text" maxlength="16" autocomplete="off"
                style="display:block; width:100%; box-sizing:border-box; margin-top:5px; padding:8px;
                       background:#222; color:#ffd700; border:1px solid #555; border-radius:4px;
@@ -862,6 +862,54 @@ function formatDobVN(dobStr) {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
 
+function normalizeNameKey(name) {
+    return String(name || '').trim().toLowerCase()
+        .replace(/[.#$\[\]\/\s]+/g, '_').slice(0, 40) || 'an_danh';
+}
+
+// Kiểm tra tên đăng nhập / tên hiển thị đã tồn tại trên máy hoặc Firebase chưa
+async function isUsernameTaken(name, excludeUid = null) {
+    const targetLower = String(name || '').trim().toLowerCase();
+    if (!targetLower) return false;
+
+    const localAccs = getLocalAccounts();
+    if (localAccs.some(a => a.name && a.name.trim().toLowerCase() === targetLower && (!excludeUid || a.uid !== excludeUid))) {
+        return true;
+    }
+
+    if (firebaseReady && db) {
+        try {
+            const regSnap = await db.ref('registered_players').once('value');
+            let takenInReg = false;
+            regSnap.forEach(child => {
+                if (excludeUid && child.key === excludeUid) return;
+                const val = child.val() || {};
+                if (val.name && String(val.name).trim().toLowerCase() === targetLower) {
+                    takenInReg = true;
+                }
+            });
+            if (takenInReg) return true;
+
+            const lbSnap = await db.ref('leaderboards').once('value');
+            let takenInLb = false;
+            lbSnap.forEach(modeSnap => {
+                modeSnap.forEach(entrySnap => {
+                    if (excludeUid && entrySnap.key === 'u_' + excludeUid) return;
+                    const val = entrySnap.val() || {};
+                    if (val.name && String(val.name).trim().toLowerCase() === targetLower) {
+                        takenInLb = true;
+                    }
+                });
+            });
+            if (takenInLb) return true;
+        } catch (e) {
+            console.warn('⚠️ Không thể kiểm tra trùng tên trên Firebase:', e);
+        }
+    }
+
+    return false;
+}
+
 async function loginWithCredentials() {
     const identifier = document.getElementById('auth-login-id').value.trim();
     const pass = document.getElementById('auth-pass-input').value;
@@ -908,6 +956,7 @@ async function registerCustomAccount() {
     const passInput = document.getElementById('reg-pass-input');
     const dobInput = document.getElementById('reg-dob-input');
     const emailInput = document.getElementById('reg-email-input');
+    const submitBtn = document.getElementById('register-submit-btn');
 
     const name = (nameInput.value || '').trim().slice(0, 16);
     const pass = passInput.value || '';
@@ -927,80 +976,144 @@ async function registerCustomAccount() {
         return showAuthMessage('Địa chỉ Gmail không hợp lệ (hoặc để trống nếu không dùng).', 'error');
     }
 
-    const passHash = await hashPassword(pass);
-    const localAccs = getLocalAccounts();
-    const duplicate = localAccs.some(a =>
-        (a.name && a.name.toLowerCase() === name.toLowerCase()) ||
-        (email && a.email && a.email.toLowerCase() === email.toLowerCase())
-    );
-    if (duplicate) {
-        return showAuthMessage('Tên người chơi hoặc Gmail này đã tồn tại trên máy.', 'error');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const nameTaken = await isUsernameTaken(name);
+        if (nameTaken) {
+            return showAuthMessage(`Tên "${name}" đã được người khác sử dụng. Vui lòng chọn tên khác.`, 'error');
+        }
+
+        const localAccs = getLocalAccounts();
+        const emailDup = email && localAccs.some(a => a.email && a.email.toLowerCase() === email.toLowerCase());
+        if (emailDup) {
+            return showAuthMessage('Gmail này đã được đăng ký trên hệ thống. Hãy chuyển sang tab ĐĂNG NHẬP.', 'error');
+        }
+
+        const passHash = await hashPassword(pass);
+        let firebaseUid = null;
+
+        if (email && firebaseReady && auth) {
+            try {
+                const cred = await auth.createUserWithEmailAndPassword(email, pass);
+                await cred.user.updateProfile({ displayName: name });
+                firebaseUid = cred.user.uid;
+                if (db) {
+                    await db.ref('users/' + cred.user.uid + '/profile').set({
+                        name,
+                        dob,
+                        email,
+                        updatedAt: Date.now()
+                    }).catch(() => {});
+                }
+            } catch (err) {
+                if (err.code === 'auth/email-already-in-use') {
+                    return showAuthMessage('Gmail này đã được đăng ký trên hệ thống. Hãy chuyển sang tab ĐĂNG NHẬP.', 'error');
+                }
+                console.warn('Firebase email register skipped/failed, saving locally:', err);
+            }
+        }
+
+        const newAcc = {
+            name,
+            passwordHash: passHash,
+            dob,
+            email,
+            uid: firebaseUid,
+            createdAt: Date.now()
+        };
+        localAccs.push(newAcc);
+        saveLocalAccounts(localAccs);
+
+        if (db) {
+            const key = firebaseUid || ('local_' + normalizeNameKey(name) + '_' + Date.now());
+            await db.ref('registered_players/' + key).set({
+                name,
+                dob,
+                email: email || null,
+                createdAt: newAcc.createdAt
+            }).catch(() => {});
+        }
+
+        clearAuthMessage();
+        setLocalSession(newAcc);
+        nameInput.value = '';
+        passInput.value = '';
+        dobInput.value = '';
+        emailInput.value = '';
+        showAuthMessage('Đăng ký thành công! Đang vào game...', 'success');
+        setTimeout(() => enterMainMenu(), 700);
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+// Tìm Gmail gắn với tên tài khoản hoặc địa chỉ nhập vào để gửi link đặt lại mật khẩu
+async function resolveRecoveryEmail(identifier) {
+    const trimmed = String(identifier || '').trim();
+    if (!trimmed) return { email: '', reason: 'empty' };
+
+    if (trimmed.includes('@')) {
+        return { email: trimmed, reason: 'direct' };
     }
 
-    let firebaseUid = null;
-    if (email && firebaseReady && auth) {
+    const lower = trimmed.toLowerCase();
+    const localAccs = getLocalAccounts();
+    const localMatch = localAccs.find(a => a.name && a.name.trim().toLowerCase() === lower);
+    if (localMatch) {
+        if (localMatch.email) return { email: localMatch.email, reason: 'local' };
+        return { email: '', reason: 'no_gmail_local' };
+    }
+
+    if (firebaseReady && db) {
         try {
-            const cred = await auth.createUserWithEmailAndPassword(email, pass);
-            await cred.user.updateProfile({ displayName: name });
-            firebaseUid = cred.user.uid;
-            if (db) {
-                db.ref('users/' + cred.user.uid + '/profile').set({
-                    name,
-                    dob,
-                    email,
-                    updatedAt: Date.now()
-                }).catch(() => {});
-            }
-        } catch (err) {
-            if (err.code === 'auth/email-already-in-use') {
-                return showAuthMessage('Gmail này đã được đăng ký trên hệ thống. Hãy chuyển sang tab ĐĂNG NHẬP.', 'error');
-            }
-            console.warn('Firebase email register skipped/failed, saving locally:', err);
+            const snap = await db.ref('registered_players').once('value');
+            let foundNoEmail = false;
+            let foundEmail = '';
+            snap.forEach(child => {
+                const val = child.val() || {};
+                if (val.name && String(val.name).trim().toLowerCase() === lower) {
+                    if (val.email) foundEmail = String(val.email).trim();
+                    else foundNoEmail = true;
+                }
+            });
+            if (foundEmail) return { email: foundEmail, reason: 'firebase' };
+            if (foundNoEmail) return { email: '', reason: 'no_gmail_remote' };
+        } catch (e) {
+            console.warn('⚠️ Không thể tra cứu tài khoản trên Firebase:', e);
         }
     }
 
-    const newAcc = {
-        name,
-        passwordHash: passHash,
-        dob,
-        email,
-        uid: firebaseUid,
-        createdAt: Date.now()
-    };
-    localAccs.push(newAcc);
-    saveLocalAccounts(localAccs);
-
-    if (db) {
-        const key = firebaseUid || ('local_' + Date.now());
-        db.ref('registered_players/' + key).set({
-            name,
-            dob,
-            email: email || null,
-            createdAt: newAcc.createdAt
-        }).catch(() => {});
-    }
-
-    clearAuthMessage();
-    setLocalSession(newAcc);
-    nameInput.value = '';
-    passInput.value = '';
-    dobInput.value = '';
-    emailInput.value = '';
-    showAuthMessage('Đăng ký thành công! Đang vào game...', 'success');
-    setTimeout(() => enterMainMenu(), 700);
+    return { email: '', reason: 'not_found' };
 }
 
 async function resetPasswordEmail() {
-    if (!firebaseReady || !auth) return showAuthMessage('Firebase chưa sẵn sàng.');
-    const email = document.getElementById('auth-login-id').value.trim();
-    if (!email || !email.includes('@')) {
-        return showAuthMessage('Hãy nhập địa chỉ Gmail của bạn vào ô bên trên trước.');
+    const resetBtn = document.getElementById('reset-pass-btn');
+    const identifier = document.getElementById('auth-login-id').value.trim();
+
+    if (!identifier) {
+        return showAuthMessage('Hãy nhập tên tài khoản hoặc địa chỉ Gmail của bạn vào ô bên trên trước.', 'error');
     }
+
+    if (!firebaseReady || !auth) {
+        return showAuthMessage('Firebase chưa sẵn sàng để gửi email đặt lại mật khẩu.', 'error');
+    }
+
+    if (resetBtn) resetBtn.disabled = true;
     try {
-        await auth.sendPasswordResetEmail(email);
-        showAuthMessage('Đã gửi email đặt lại mật khẩu tới ' + email, 'success');
+        const lookup = await resolveRecoveryEmail(identifier);
+        if (!lookup.email) {
+            if (lookup.reason === 'no_gmail_local' || lookup.reason === 'no_gmail_remote') {
+                return showAuthMessage(`Tài khoản "${identifier}" được đăng ký không kèm Gmail nên không thể gửi email khôi phục.`, 'error');
+            }
+            return showAuthMessage(`Không tìm thấy Gmail liên kết với "${identifier}". Hãy nhập trực tiếp địa chỉ Gmail của bạn.`, 'error');
+        }
+
+        await auth.sendPasswordResetEmail(lookup.email);
+        showAuthMessage(`Đã gửi link đặt lại mật khẩu tới Gmail ${lookup.email}. Hãy kiểm tra cả hộp thư Spam/Quảng cáo.`, 'success');
     } catch (err) {
         showAuthMessage(formatAuthError(err), 'error');
+    } finally {
+        if (resetBtn) resetBtn.disabled = false;
     }
 }
 
@@ -1027,7 +1140,6 @@ async function logoutUser() {
             console.error(e);
         }
     }
-    // Quay về màn hình đăng nhập ngay khi đăng xuất
     openAuthScreen();
 }
 
@@ -1090,7 +1202,6 @@ function updateAccountUI(user) {
     }
 }
 
-// Nếu đã đăng nhập từ phiên trước (Firebase hoặc localSession), tự động vào thẳng Menu chính
 if (localSession) {
     updateAccountUI(null);
     enterMainMenu();
@@ -1237,10 +1348,6 @@ function renderAchievements() {
 let leaderboard = JSON.parse(localStorage.getItem('leaderboard') ||
     '{"easy":[],"normal":[],"hard":[],"insane":[],"endless":[]}');
 
-function normalizeNameKey(name) {
-    return String(name || '').trim().toLowerCase()
-        .replace(/[.#$\[\]\/\s]+/g, '_').slice(0, 40) || 'an_danh';
-}
 function getPlayerKey() {
     if (currentUser && currentUser.uid) return 'u_' + currentUser.uid;
     return 'n_' + normalizeNameKey(playerName);
@@ -1384,15 +1491,27 @@ function bindNameInput() {
     const el = document.getElementById('player-name-input');
     if (!el) return;
     el.value = playerName;
-    el.addEventListener('input', () => {
+    el.addEventListener('change', async () => {
         const trimmed = el.value.trim().slice(0, 16);
-        const v = trimmed || 'Ẩn danh';
-        playerName = v;
-        localStorage.setItem('playerName', v);
-        if (!currentUser) {
-            if (localSession) localSession.name = v;
-            document.getElementById('menu-user-name').textContent = playerName;
+        const v = trimmed || playerName;
+        if (v.toLowerCase() === playerName.toLowerCase()) {
+            el.value = playerName;
+            return;
         }
+        const taken = await isUsernameTaken(v, currentUser ? currentUser.uid : null);
+        if (taken) {
+            alert(`Tên "${v}" đã tồn tại. Vui lòng chọn tên khác!`);
+            el.value = playerName;
+            return;
+        }
+        playerName = v;
+        el.value = v;
+        localStorage.setItem('playerName', v);
+        if (!currentUser && localSession) {
+            localSession.name = v;
+            localStorage.setItem('localAuthSession', JSON.stringify(localSession));
+        }
+        document.getElementById('menu-user-name').textContent = playerName;
     });
 }
 
